@@ -1,0 +1,11 @@
+{
+  "bak:ApiVersion": "3.19.0",
+  "bak:AppVersion": "1.45.1234.1",
+  "bak:UserId": "ABCD1234",
+  "access_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkRFRkFVTFQiLCJ0eXAiOiJhdCtqd3QifQ.eyJuYmYiOjE3MDI1NzYwMDAsImV4cCI6MTcwMjU3OTYwMCwiaXNzIjoiaHR0cHM6Ly9iYWthbGFyaS56c3piLmN6IiwiYXVkIjoiYmFrYWxhcmlfYXBpIiwiY2xpZW50X2lkIjoiQU5EUiIsInN1YiI6IkFCQ0QxMjM0Iiwic2NvcGUiOlsib3BlbmlkIiwicHJvZmlsZSIsIm9mZmxpbmVfYWNjZXNzIiwiYmFrYWxhcmlfYXBpIl19.test_signature",
+  "refresh_token": "CDEF5678GHIJ9012KLMN3456OPQR7890STUV1234WXYZ5678abcd9012efgh3456ijkl7890mnop1234qrst5678uvwx9012yzAB3456CDEF7890GHIJ1234KLMN5678OPQR9012STUV3456WXYZ7890abcd1234efgh5678ijkl9012mnop3456qrst7890uvwx1234yzAB5678",
+  "id_token": "eyJhbGciOiJSUzI1NiIsImtpZCI6IkRFRkFVTFQiLCJ0eXAiOiJKV1QifQ.eyJuYmYiOjE3MDI1NzYwMDAsImV4cCI6MTcwMjU3NzgwMCwiaXNzIjoiaHR0cHM6Ly9iYWthbGFyaS56c3piLmN6IiwiYXVkIjoiQU5EUiIsInN1YiI6IkFCQ0QxMjM0In0.test_signature",
+  "token_type": "Bearer",
+  "expires_in": 3599,
+  "scope": "openid profile offline_access bakalari_api"
+}

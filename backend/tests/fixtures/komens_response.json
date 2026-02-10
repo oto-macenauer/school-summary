@@ -1,0 +1,68 @@
+{
+  "Messages": [
+    {
+      "Id": "MSG001",
+      "Title": "Informace o třídní schůzce",
+      "Text": "<p>Vážení rodiče,</p><p>zveme vás na třídní schůzku, která se koná <b>15. prosince 2024</b> v 17:00 v učebně 101.</p><p>Těšíme se na vaši účast.</p><p>S pozdravem,<br/>Třídní učitel</p>",
+      "SentDate": "2024-12-10T09:30:00+01:00",
+      "Sender": {
+        "Id": "T1",
+        "Type": "teacher",
+        "Name": "Jan Novák"
+      },
+      "Read": false,
+      "Confirmed": false,
+      "LifeTime": "ToConfirm",
+      "Type": "OBECNA",
+      "CanConfirm": true,
+      "CanAnswer": true,
+      "CanHide": false,
+      "Attachments": []
+    },
+    {
+      "Id": "MSG002",
+      "Title": "Změna rozvrhu - pondělí",
+      "Text": "Dobrý den,<br/>z důvodu nemoci paní učitelky bude v pondělí změna rozvrhu. Hodina chemie je zrušena.<br/>Vedení školy",
+      "SentDate": "2024-12-09T14:00:00+01:00",
+      "Sender": {
+        "Id": "SCHOOL",
+        "Type": "school",
+        "Name": "Vedení školy"
+      },
+      "Read": true,
+      "Confirmed": false,
+      "LifeTime": "ToRead",
+      "Type": "OBECNA",
+      "CanConfirm": false,
+      "CanAnswer": false,
+      "CanHide": true,
+      "Attachments": []
+    },
+    {
+      "Id": "MSG003",
+      "Title": "Výsledky soutěže",
+      "Text": "<p>Gratulujeme!</p><p>Váš syn/dcera se umístil(a) na <b>2. místě</b> v matematické olympiádě.</p>",
+      "SentDate": "2024-12-08T11:00:00+01:00",
+      "Sender": {
+        "Id": "T1",
+        "Type": "teacher",
+        "Name": "Jan Novák"
+      },
+      "Read": true,
+      "Confirmed": true,
+      "LifeTime": "Unlimited",
+      "Type": "OBECNA",
+      "CanConfirm": false,
+      "CanAnswer": true,
+      "CanHide": true,
+      "Attachments": [
+        {
+          "Id": "ATT001",
+          "Name": "diplom.pdf",
+          "Size": 125000,
+          "Type": "application/pdf"
+        }
+      ]
+    }
+  ]
+}

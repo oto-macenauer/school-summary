@@ -1,0 +1,63 @@
+{
+  "Hours": [
+    {"Id": "1", "Caption": "1.", "BeginTime": "08:00", "EndTime": "08:45"},
+    {"Id": "2", "Caption": "2.", "BeginTime": "08:55", "EndTime": "09:40"},
+    {"Id": "3", "Caption": "3.", "BeginTime": "10:00", "EndTime": "10:45"},
+    {"Id": "4", "Caption": "4.", "BeginTime": "10:55", "EndTime": "11:40"},
+    {"Id": "5", "Caption": "5.", "BeginTime": "11:50", "EndTime": "12:35"}
+  ],
+  "Days": [
+    {
+      "Date": "2024-12-09T00:00:00+01:00",
+      "DayType": "WorkDay",
+      "DayDescription": null,
+      "Atoms": [
+        {"HourId": "1", "SubjectId": "MAT", "TeacherId": "T1", "RoomId": "R1", "Theme": "Algebra", "Change": null},
+        {"HourId": "2", "SubjectId": "CJ", "TeacherId": "T2", "RoomId": "R2", "Theme": null, "Change": null},
+        {"HourId": "3", "SubjectId": "AJ", "TeacherId": "T3", "RoomId": "R3", "Theme": "Grammar", "Change": null}
+      ]
+    },
+    {
+      "Date": "2024-12-10T00:00:00+01:00",
+      "DayType": "WorkDay",
+      "DayDescription": null,
+      "Atoms": [
+        {"HourId": "1", "SubjectId": "FYZ", "TeacherId": "T4", "RoomId": "R4", "Theme": null, "Change": null},
+        {"HourId": "2", "SubjectId": "CHE", "TeacherId": "T5", "RoomId": "R5", "Theme": null, "Change": {"Description": "Supplování"}}
+      ]
+    },
+    {
+      "Date": "2024-12-11T00:00:00+01:00",
+      "DayType": "Holiday",
+      "DayDescription": "Vánoční prázdniny",
+      "Atoms": []
+    },
+    {
+      "Date": "2024-12-14T00:00:00+01:00",
+      "DayType": "Weekend",
+      "DayDescription": null,
+      "Atoms": []
+    }
+  ],
+  "Subjects": [
+    {"Id": "MAT", "Name": "Matematika", "Abbrev": "M"},
+    {"Id": "CJ", "Name": "Český jazyk", "Abbrev": "ČJ"},
+    {"Id": "AJ", "Name": "Anglický jazyk", "Abbrev": "AJ"},
+    {"Id": "FYZ", "Name": "Fyzika", "Abbrev": "F"},
+    {"Id": "CHE", "Name": "Chemie", "Abbrev": "CH"}
+  ],
+  "Teachers": [
+    {"Id": "T1", "Name": "Jan Novák", "Abbrev": "Nov"},
+    {"Id": "T2", "Name": "Marie Svobodová", "Abbrev": "Svo"},
+    {"Id": "T3", "Name": "Petr Dvořák", "Abbrev": "Dvo"},
+    {"Id": "T4", "Name": "Eva Černá", "Abbrev": "Čer"},
+    {"Id": "T5", "Name": "Karel Horák", "Abbrev": "Hor"}
+  ],
+  "Rooms": [
+    {"Id": "R1", "Name": "Učebna 101", "Abbrev": "101"},
+    {"Id": "R2", "Name": "Učebna 102", "Abbrev": "102"},
+    {"Id": "R3", "Name": "Jazyková učebna", "Abbrev": "JU"},
+    {"Id": "R4", "Name": "Laboratoř fyziky", "Abbrev": "LF"},
+    {"Id": "R5", "Name": "Laboratoř chemie", "Abbrev": "LCH"}
+  ]
+}

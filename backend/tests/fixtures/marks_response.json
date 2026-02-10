@@ -1,0 +1,114 @@
+{
+  "Subjects": [
+    {
+      "Subject": {
+        "Id": "MAT",
+        "Name": "Matematika",
+        "Abbrev": "M"
+      },
+      "AverageText": "1,75",
+      "Marks": [
+        {
+          "Id": "M1",
+          "MarkDate": "2024-12-01T00:00:00+01:00",
+          "EditDate": "2024-12-01T10:30:00+01:00",
+          "Caption": "Písemná práce - rovnice",
+          "MarkText": "1",
+          "Weight": 2,
+          "SubjectId": "MAT",
+          "TeacherId": "T1",
+          "Type": "P",
+          "TypeNote": "Písemná práce",
+          "IsNew": false,
+          "IsPoints": false,
+          "PointsText": null,
+          "MaxPoints": null
+        },
+        {
+          "Id": "M2",
+          "MarkDate": "2024-12-10T00:00:00+01:00",
+          "EditDate": "2024-12-10T14:00:00+01:00",
+          "Caption": "Test - zlomky",
+          "MarkText": "2-",
+          "Weight": 1,
+          "SubjectId": "MAT",
+          "TeacherId": "T1",
+          "Type": "T",
+          "TypeNote": "Test",
+          "IsNew": true,
+          "IsPoints": false,
+          "PointsText": null,
+          "MaxPoints": null
+        }
+      ]
+    },
+    {
+      "Subject": {
+        "Id": "CJ",
+        "Name": "Český jazyk",
+        "Abbrev": "ČJ"
+      },
+      "AverageText": "2,00",
+      "Marks": [
+        {
+          "Id": "M3",
+          "MarkDate": "2024-11-15T00:00:00+01:00",
+          "EditDate": "2024-11-15T09:00:00+01:00",
+          "Caption": "Diktát",
+          "MarkText": "2",
+          "Weight": 1,
+          "SubjectId": "CJ",
+          "TeacherId": "T2",
+          "Type": "D",
+          "TypeNote": "Diktát",
+          "IsNew": false,
+          "IsPoints": false,
+          "PointsText": null,
+          "MaxPoints": null
+        },
+        {
+          "Id": "M4",
+          "MarkDate": "2024-12-05T00:00:00+01:00",
+          "EditDate": "2024-12-05T11:00:00+01:00",
+          "Caption": "Sloh - popis",
+          "MarkText": "2",
+          "Weight": 2,
+          "SubjectId": "CJ",
+          "TeacherId": "T2",
+          "Type": "S",
+          "TypeNote": "Sloh",
+          "IsNew": false,
+          "IsPoints": false,
+          "PointsText": null,
+          "MaxPoints": null
+        }
+      ]
+    },
+    {
+      "Subject": {
+        "Id": "AJ",
+        "Name": "Anglický jazyk",
+        "Abbrev": "AJ"
+      },
+      "AverageText": "1,50",
+      "Marks": [
+        {
+          "Id": "M5",
+          "MarkDate": "2024-12-08T00:00:00+01:00",
+          "EditDate": "2024-12-08T10:00:00+01:00",
+          "Caption": "Vocabulary test",
+          "MarkText": "1+",
+          "Weight": 1,
+          "SubjectId": "AJ",
+          "TeacherId": "T3",
+          "Type": "T",
+          "TypeNote": "Test",
+          "IsNew": true,
+          "IsPoints": false,
+          "PointsText": null,
+          "MaxPoints": null
+        }
+      ]
+    }
+  ]
+}
