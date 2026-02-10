@@ -1,6 +1,13 @@
+export interface ExtraSubject {
+  name: string
+  time: string
+  days: string[]
+}
+
 export interface DashboardData {
   student: string
   today_timetable: TimetableDay | null
+  extra_subjects: ExtraSubject[]
   summary_last: SummaryData | null
   summary_current: SummaryData | null
   summary_next: SummaryData | null

@@ -6,7 +6,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./app_data:/app/app_data
+      - ${PATH_TO_APPDATA}/school-summary:/app/app_data
     environment:
       - APP_DATA_DIR=/app/app_data
     healthcheck:
