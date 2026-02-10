@@ -240,12 +240,15 @@ class GoogleDriveClient:
             raise GoogleDriveError(f"Failed to parse DOCX: {err}") from err
 
     def _matches_week_number(self, filename: str, week_number: int) -> bool:
-        """Check if a filename matches a week number pattern like 'Week 14.docx'."""
+        """Check if a filename matches a week number pattern.
+
+        Matches 'Week 14.docx', 'Week 16 (15.12-19.12).docx', etc.
+        Uses word boundary after the number to avoid partial matches.
+        """
         name = filename.strip()
         patterns = [
-            rf"^(?:week|týden|tyden|w)\s*{week_number}(?:\.\w+)?$",
-            rf"^{week_number}\s*(?:week|týden|tyden)(?:\.\w+)?$",
-            rf"^(?:week|týden|tyden|w)[_-]?{week_number}(?:\.\w+)?$",
+            rf"^(?:week|týden|tyden|w)[\s_-]*{week_number}\b",
+            rf"^{week_number}\s+(?:week|týden|tyden)\b",
         ]
         return any(re.match(p, name, re.IGNORECASE) for p in patterns)
 

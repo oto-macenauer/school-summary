@@ -281,6 +281,13 @@ class TestMatchesWeekNumber:
         ("random.docx", 14, False),
         ("Week 4.docx", 4, True),
         ("Week 4.docx", 14, False),
+        # Extended format with date ranges
+        ("Week 16 (15.12-19.12).docx", 16, True),
+        ("Week 16 (15.12-19.12).docx", 14, False),
+        ("Týden 16 (15.12-19.12).docx", 16, True),
+        ("Week 14 - some notes.docx", 14, True),
+        ("Week 140.docx", 14, False),
+        ("14 Week.docx", 14, True),
     ])
     def test_matches(self, client, filename, week, expected):
         assert client._matches_week_number(filename, week) == expected
