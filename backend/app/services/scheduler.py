@@ -182,6 +182,21 @@ class BackgroundScheduler:
         if not gemini:
             return
 
+        if ctx.timetable is None or ctx.marks is None:
+            log_mgr = get_log_manager()
+            log_mgr.log(
+                LogCategory.SCHEDULER, "INFO",
+                f"Summary waiting for timetable/marks data for {ctx.name}",
+                student=ctx.name,
+            )
+            ready = await self._wait_for_data(ctx, needs_timetable=True, needs_marks=True)
+            if not ready:
+                log_mgr.log(
+                    LogCategory.SCHEDULER, "WARNING",
+                    f"Summary timed out waiting for data for {ctx.name}",
+                    student=ctx.name,
+                )
+
         prompts = self._config.prompts
 
         # Fetch GDrive reports for the relevant weeks
@@ -259,6 +274,21 @@ class BackgroundScheduler:
         gemini = self._manager.gemini
         if not gemini:
             return
+
+        if ctx.timetable is None:
+            log_mgr = get_log_manager()
+            log_mgr.log(
+                LogCategory.SCHEDULER, "INFO",
+                f"Prepare waiting for timetable data for {ctx.name}",
+                student=ctx.name,
+            )
+            ready = await self._wait_for_data(ctx, needs_timetable=True, needs_marks=False)
+            if not ready:
+                log_mgr.log(
+                    LogCategory.SCHEDULER, "WARNING",
+                    f"Prepare timed out waiting for data for {ctx.name}",
+                    student=ctx.name,
+                )
 
         prompts = self._config.prompts
 
@@ -341,6 +371,30 @@ class BackgroundScheduler:
 
         if synced:
             _LOGGER.info("Synced %d new GDrive reports for %s", synced, ctx.name)
+
+    async def _wait_for_data(
+        self,
+        ctx: StudentContext,
+        needs_timetable: bool = True,
+        needs_marks: bool = True,
+        poll_interval: float = 5.0,
+        timeout: float = 300.0,
+    ) -> bool:
+        """Wait for required data to be populated on a StudentContext.
+
+        Returns True if all required data became available, False on timeout.
+        """
+        start = time.monotonic()
+        while self._running and (time.monotonic() - start) < timeout:
+            timetable_ok = (not needs_timetable) or (ctx.timetable is not None)
+            marks_ok = (not needs_marks) or (ctx.marks is not None)
+            if timetable_ok and marks_ok:
+                return True
+            try:
+                await asyncio.sleep(poll_interval)
+            except asyncio.CancelledError:
+                return False
+        return False
 
     async def stop(self) -> None:
         """Cancel all periodic tasks."""
