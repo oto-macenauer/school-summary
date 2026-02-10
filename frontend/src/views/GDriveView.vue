@@ -171,6 +171,7 @@ watch(() => store.current, load)
 .report__content :deep(p) { margin: 0 0 0.5em; }
 .report__content :deep(ul) { margin: 0.25em 0; padding-left: 1.5em; }
 .report__content :deep(li) { margin: 0.15em 0; }
+.report__content :deep(li > ol) { list-style-type: none; }
 .report__content :deep(h2) { font-size: var(--font-size-base); font-weight: var(--font-weight-semibold); margin: 0.75em 0 0.25em; }
 .report__content :deep(strong) { font-weight: 600; }
 

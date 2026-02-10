@@ -43,6 +43,7 @@ def mock_student_context() -> MagicMock:
     ctx.summary_next = None
     ctx.prepare_today = None
     ctx.prepare_tomorrow = None
+    ctx.student_info = ""
     return ctx
 
 

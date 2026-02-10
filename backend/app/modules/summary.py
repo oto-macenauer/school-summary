@@ -243,6 +243,7 @@ class SummaryModule:
         week_end: date,
         week_type: str = "current",
         gdrive_report: str = "",
+        student_info: str = "",
     ) -> str:
         """Build prompt from a config template using str.format_map()."""
         week_type_labels = {
@@ -258,6 +259,7 @@ class SummaryModule:
             "timetable": self.format_timetable(timetable),
             "marks": self.format_marks(marks),
             "gdrive_report": gdrive_report or "Žádný report k dispozici.",
+            "student_info": f"\nInformace o studentovi:\n{student_info}\n" if student_info else "",
         }
         try:
             return template.format_map(variables)

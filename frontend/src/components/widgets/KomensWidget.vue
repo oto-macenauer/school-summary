@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { useStudentStore } from '@/stores/student'
 import type { KomensData } from '@/types'
 import GlassCard from '@/components/ui/GlassCard.vue'
 
 defineProps<{ data: KomensData | null }>()
+
+const store = useStudentStore()
 
 function truncate(text: string, max: number): string {
   if (!text || text.length <= max) return text || ''
@@ -20,7 +23,7 @@ function truncate(text: string, max: number): string {
         <RouterLink
           v-for="m in data.recent_messages?.slice(0, 5)"
           :key="m.id"
-          to="/komens"
+          :to="{ name: 'komens', params: { student: store.current?.toLowerCase() } }"
           class="msg"
           :class="{ 'msg--unread': !m.is_read }"
         >

@@ -21,6 +21,7 @@ students:
   - name: "Student Name"
     username: "username"
     password: "password"
+    # student_info: "Třída 5.A, třídní učitelka Mgr. Nováková"
     extra_subjects:
       # - name: "Angličtina kroužek"
       #   time: "14:00"
@@ -53,7 +54,7 @@ update_intervals:
 prompts:
   # ── Weekly Summary Prompt ──
   # Variables: {week_type}, {date_from}, {date_to}, {messages},
-  #            {timetable}, {marks}, {gdrive_report}
+  #            {timetable}, {marks}, {gdrive_report}, {student_info}
   summary: |
     Jsi školní asistent. Shrň hlavní události za {week_type} ({date_from} – {date_to}).
 
@@ -78,7 +79,7 @@ prompts:
     Buď stručný a věcný. Zaměř se na praktické informace.
 
   # ── Today Preparation Prompt ──
-  # Variables: {target_date}, {day_name}, {lessons}, {messages}
+  # Variables: {target_date}, {day_name}, {lessons}, {messages}, {student_info}
   prepare_today: |
     Jsi školní asistent. Připrav přehled pro dnešní den {day_name} {target_date}.
 
@@ -92,7 +93,7 @@ prompts:
     co je potřeba mít s sebou, na co nezapomenout.
 
   # ── Tomorrow Preparation Prompt ──
-  # Same variables as prepare_today.
+  # Same variables as prepare_today (including {student_info}).
   prepare_tomorrow: |
     Jsi školní asistent. Připrav přehled na zítřek {day_name} {target_date}.
 

@@ -107,6 +107,9 @@ def mock_ctx(tmp_path):
     gdrive_path = tmp_path / "gdrive"
     ctx.gdrive_storage = GDriveStorage(gdrive_path, "TestStudent")
 
+    # Student info
+    ctx.student_info = ""
+
     return ctx
 
 
@@ -342,7 +345,7 @@ class TestGetAvailableVariables:
 
     def test_categories_are_valid(self, mock_ctx):
         variables = get_available_variables(mock_ctx)
-        valid = {"timetable", "marks", "komens", "gdrive", "summary", "prepare"}
+        valid = {"timetable", "marks", "komens", "gdrive", "summary", "prepare", "student_info"}
         for v in variables:
             assert v["category"] in valid
 

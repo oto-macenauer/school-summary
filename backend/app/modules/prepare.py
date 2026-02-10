@@ -151,6 +151,7 @@ class PrepareModule:
         messages: list[dict[str, Any]],
         timetable: WeekTimetable | None,
         target_date: date,
+        student_info: str = "",
     ) -> str:
         """Build prompt from a config template using str.format_map()."""
         day_names = {
@@ -163,6 +164,7 @@ class PrepareModule:
             "day_name": day_names.get(target_date.weekday(), ""),
             "lessons": lessons_text,
             "messages": self.format_messages(messages),
+            "student_info": f"\nInformace o studentovi:\n{student_info}\n" if student_info else "",
         }
         try:
             return template.format_map(variables)

@@ -15,7 +15,7 @@ from ..const import (
 
 DEFAULT_SUMMARY_PROMPT = """\
 Jsi školní asistent. Shrň hlavní události za {week_type} ({date_from} – {date_to}).
-
+{student_info}
 Zprávy z Komensu:
 {messages}
 
@@ -38,7 +38,7 @@ Buď stručný a věcný. Zaměř se na praktické informace.\
 
 DEFAULT_PREPARE_TODAY_PROMPT = """\
 Jsi školní asistent. Připrav přehled pro dnešní den {day_name} {target_date}.
-
+{student_info}
 Dnešní rozvrh:
 {lessons}
 
@@ -51,7 +51,7 @@ co je potřeba mít s sebou, na co nezapomenout.\
 
 DEFAULT_PREPARE_TOMORROW_PROMPT = """\
 Jsi školní asistent. Připrav přehled na zítřek {day_name} {target_date}.
-
+{student_info}
 Zítřejší rozvrh:
 {lessons}
 
@@ -83,6 +83,7 @@ class StudentConfig(BaseModel):
     username: str
     password: str
     gdrive_folder_id: str = ""
+    student_info: str = ""
     extra_subjects: list[ExtraSubject] = Field(default_factory=list)
 
     @field_validator("extra_subjects", mode="before")

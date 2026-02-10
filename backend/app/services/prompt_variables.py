@@ -46,6 +46,7 @@ def _resolve_variable(expr: str, ctx: StudentContext) -> str | None:
         "gdrive": _resolve_gdrive,
         "summary": _resolve_summary,
         "prepare": _resolve_prepare,
+        "student_info": _resolve_student_info,
     }
 
     resolver = resolvers.get(category)
@@ -232,6 +233,10 @@ def _resolve_prepare(params: list[str], ctx: StudentContext) -> str:
     return data.preparation_text
 
 
+def _resolve_student_info(params: list[str], ctx: StudentContext) -> str:
+    return ctx.student_info or "Žádné doplňující informace o studentovi."
+
+
 def get_available_variables(ctx: StudentContext) -> list[dict[str, str]]:
     """Return list of available variables with descriptions."""
     variables: list[dict[str, str]] = [
@@ -251,6 +256,7 @@ def get_available_variables(ctx: StudentContext) -> list[dict[str, str]]:
         {"name": "summary:next", "category": "summary", "description": "Shrnutí příštího týdne"},
         {"name": "prepare:today", "category": "prepare", "description": "Příprava na dnešek"},
         {"name": "prepare:tomorrow", "category": "prepare", "description": "Příprava na zítřek"},
+        {"name": "student_info", "category": "student_info", "description": "Informace o studentovi (třída, třídní učitel apod.)"},
     ]
 
     # Add subject-specific marks variables

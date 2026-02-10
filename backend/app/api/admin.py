@@ -77,7 +77,9 @@ async def get_config():
 async def reload_config():
     """Force reload config from YAML file."""
     try:
+        manager = get_manager()
         config = load_config()
+        manager._config = config
         return {"status": "ok", "message": "Configuration reloaded"}
     except Exception as err:
         return {"status": "error", "message": str(err)}

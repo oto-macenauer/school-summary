@@ -40,6 +40,7 @@ class StudentContext:
     komens_storage: KomensStorage
     gdrive_storage: GDriveStorage
     gdrive_client: GoogleDriveClient | None = None
+    student_info: str = ""
 
     # Cached data
     timetable: WeekTimetable | None = None
@@ -155,6 +156,7 @@ class StudentManager:
             komens_storage=komens_storage,
             gdrive_storage=gdrive_storage,
             gdrive_client=gdrive_client,
+            student_info=cfg.student_info,
         )
         self._students[cfg.name] = ctx
 

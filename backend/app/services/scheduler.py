@@ -243,6 +243,7 @@ class BackgroundScheduler:
                 week_end=week_end,
                 week_type=week_type,
                 gdrive_report=gdrive_content,
+                student_info=ctx.student_info,
             )
 
             text = await gemini.generate_content(
@@ -302,6 +303,7 @@ class BackgroundScheduler:
                 messages=messages,
                 timetable=ctx.timetable,
                 target_date=target_date,
+                student_info=ctx.student_info,
             )
 
             text = await gemini.generate_content(
