@@ -5,6 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 
 from ..const import (
+    DEFAULT_CANTEEN_UPDATE_INTERVAL,
     DEFAULT_GDRIVE_UPDATE_INTERVAL,
     DEFAULT_KOMENS_UPDATE_INTERVAL,
     DEFAULT_MARKS_UPDATE_INTERVAL,
@@ -102,6 +103,14 @@ class GDriveConfig(BaseModel):
     school_year_start: str = ""
 
 
+class CanteenConfig(BaseModel):
+    """School canteen (Strava.cz) configuration."""
+
+    cislo: str = ""
+    s5url: str = ""
+    lang: str = "CZ"
+
+
 class UpdateIntervalsConfig(BaseModel):
     """Update interval configuration."""
 
@@ -111,6 +120,7 @@ class UpdateIntervalsConfig(BaseModel):
     summary: int = DEFAULT_SUMMARY_UPDATE_INTERVAL
     prepare: int = DEFAULT_PREPARE_UPDATE_INTERVAL
     gdrive: int = DEFAULT_GDRIVE_UPDATE_INTERVAL
+    canteen: int = DEFAULT_CANTEEN_UPDATE_INTERVAL
 
 
 class PromptsConfig(BaseModel):
@@ -130,6 +140,7 @@ class AppConfig(BaseModel):
     students: list[StudentConfig] = Field(default_factory=list)
     gemini_api_key: str = ""
     gdrive: GDriveConfig = Field(default_factory=GDriveConfig)
+    canteen: CanteenConfig = Field(default_factory=CanteenConfig)
     update_intervals: UpdateIntervalsConfig = Field(
         default_factory=UpdateIntervalsConfig
     )

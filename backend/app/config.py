@@ -34,12 +34,18 @@ gdrive:
   reports_folder_id: ""
   school_year_start: ""
 
+canteen:
+  cislo: ""
+  s5url: ""
+  lang: "CZ"
+
 update_intervals:
   timetable: 3600    # seconds
   marks: 1800
   komens: 900
   summary: 86400
   prepare: 3600
+  canteen: 3600
 
 # ──────────────────────────────────────────────
 # Prompt Templates

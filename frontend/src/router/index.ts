@@ -8,6 +8,7 @@ const router = createRouter({
     { path: '/:student/timetable', name: 'timetable', component: () => import('@/views/TimetableView.vue') },
     { path: '/:student/marks', name: 'marks', component: () => import('@/views/MarksView.vue') },
     { path: '/:student/komens', name: 'komens', component: () => import('@/views/KomensView.vue') },
+    { path: '/:student/canteen', name: 'canteen', component: () => import('@/views/CanteenView.vue') },
     { path: '/:student/reports', name: 'reports', component: () => import('@/views/GDriveView.vue') },
     { path: '/:student/prompt', name: 'prompt', component: () => import('@/views/PromptView.vue') },
     { path: '/admin', name: 'admin', component: () => import('@/views/AdminView.vue') },

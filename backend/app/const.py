@@ -26,6 +26,9 @@ TOKEN_EXPIRY_BUFFER: Final = 300  # Refresh token 5 minutes before expiry
 GRANT_TYPE_PASSWORD: Final = "password"
 GRANT_TYPE_REFRESH: Final = "refresh_token"
 
+# Canteen API constants
+CANTEEN_API_URL: Final = "https://app.strava.cz/api/jidelnicky"
+
 # Default update intervals (seconds)
 DEFAULT_TIMETABLE_UPDATE_INTERVAL: Final = 3600
 DEFAULT_MARKS_UPDATE_INTERVAL: Final = 1800
@@ -33,3 +36,4 @@ DEFAULT_KOMENS_UPDATE_INTERVAL: Final = 900
 DEFAULT_SUMMARY_UPDATE_INTERVAL: Final = 86400
 DEFAULT_PREPARE_UPDATE_INTERVAL: Final = 3600
 DEFAULT_GDRIVE_UPDATE_INTERVAL: Final = 3600
+DEFAULT_CANTEEN_UPDATE_INTERVAL: Final = 3600

@@ -15,6 +15,7 @@ from ..core.client import BakalariClient
 from ..core.gdrive import GoogleDriveClient
 from ..core.gemini import GeminiClient
 from ..models.config import AppConfig, StudentConfig
+from ..modules.canteen import CanteenData, CanteenModule
 from ..modules.komens import KomensModule, MessagesData
 from ..modules.marks import MarksData, MarksModule
 from ..modules.prepare import PrepareData, PrepareModule, get_next_school_day, get_tomorrow
@@ -68,6 +69,9 @@ class StudentManager:
         self._session: aiohttp.ClientSession | None = None
         self._gemini: GeminiClient | None = None
         self._config: AppConfig | None = None
+        self._canteen_module: CanteenModule | None = None
+        self._canteen: CanteenData | None = None
+        self._canteen_updated: datetime | None = None
 
     @property
     def students(self) -> dict[str, StudentContext]:
@@ -76,6 +80,26 @@ class StudentManager:
     @property
     def gemini(self) -> GeminiClient | None:
         return self._gemini
+
+    @property
+    def canteen_module(self) -> CanteenModule | None:
+        return self._canteen_module
+
+    @property
+    def canteen(self) -> CanteenData | None:
+        return self._canteen
+
+    @canteen.setter
+    def canteen(self, value: CanteenData | None) -> None:
+        self._canteen = value
+
+    @property
+    def canteen_updated(self) -> datetime | None:
+        return self._canteen_updated
+
+    @canteen_updated.setter
+    def canteen_updated(self, value: datetime | None) -> None:
+        self._canteen_updated = value
 
     @property
     def gdrive_available(self) -> bool:
@@ -94,6 +118,17 @@ class StudentManager:
         if config.gemini_api_key:
             self._gemini = GeminiClient(config.gemini_api_key, session=self._session)
             _LOGGER.info("Gemini client initialized")
+
+        # Initialize canteen module (school-wide, not per-student)
+        canteen_cfg = config.canteen
+        if canteen_cfg.cislo and canteen_cfg.s5url:
+            self._canteen_module = CanteenModule(
+                session=self._session,
+                cislo=canteen_cfg.cislo,
+                s5url=canteen_cfg.s5url,
+                lang=canteen_cfg.lang,
+            )
+            _LOGGER.info("Canteen module initialized (cislo: %s)", canteen_cfg.cislo)
 
         app_data = get_app_data_dir()
         komens_base = app_data / "komens"

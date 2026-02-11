@@ -53,6 +53,7 @@ def mock_manager(mock_student_context) -> MagicMock:
     manager = MagicMock()
     manager.students = {"TestStudent": mock_student_context}
     manager.gemini = MagicMock()
+    manager.canteen_module = None
     return manager
 
 

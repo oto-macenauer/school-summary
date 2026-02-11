@@ -125,3 +125,27 @@ export interface TaskStatus {
   run_count: number
   error_count: number
 }
+
+export interface CanteenAllergen {
+  code: string
+  name: string
+}
+
+export interface CanteenMeal {
+  druh: string
+  druh_popis: string
+  nazev: string
+  alergeny: CanteenAllergen[]
+}
+
+export interface CanteenDay {
+  date: string
+  date_label: string
+  day_name: string
+  meals: CanteenMeal[]
+}
+
+export interface CanteenData {
+  days: CanteenDay[]
+  fetched_at: string | null
+}

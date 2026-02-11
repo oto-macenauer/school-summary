@@ -84,6 +84,10 @@ class BackgroundScheduler:
             if ctx.gdrive_client:
                 self._schedule_task(f"gdrive:{name}", intervals.gdrive, self._refresh_gdrive, ctx)
 
+        # Canteen is school-wide, schedule once (not per-student)
+        if self._manager.canteen_module:
+            self._schedule_canteen_task(intervals.canteen)
+
         _LOGGER.info("Scheduler started with %d tasks", len(self._tasks))
 
     def _schedule_task(
@@ -373,6 +377,68 @@ class BackgroundScheduler:
 
         if synced:
             _LOGGER.info("Synced %d new GDrive reports for %s", synced, ctx.name)
+
+    def _schedule_canteen_task(self, interval: int) -> None:
+        task_key = "canteen:global"
+        status = TaskStatus(
+            task_name="canteen",
+            student="global",
+            interval_seconds=interval,
+            next_run=datetime.now(),
+        )
+        self._task_statuses[task_key] = status
+        task = asyncio.create_task(self._run_canteen_periodic(task_key, interval))
+        self._tasks.append(task)
+
+    async def _run_canteen_periodic(self, task_key: str, interval: int) -> None:
+        status = self._task_statuses[task_key]
+        log_mgr = get_log_manager()
+
+        while self._running:
+            start = time.monotonic()
+            status.last_run = datetime.now()
+
+            try:
+                await self._refresh_canteen()
+                elapsed = int((time.monotonic() - start) * 1000)
+                status.last_duration_ms = elapsed
+                status.last_status = "success"
+                status.last_error = None
+                status.run_count += 1
+                log_mgr.log(
+                    LogCategory.SCHEDULER, "INFO",
+                    f"Task {task_key} completed in {elapsed}ms",
+                )
+            except asyncio.CancelledError:
+                return
+            except Exception as err:
+                elapsed = int((time.monotonic() - start) * 1000)
+                status.last_duration_ms = elapsed
+                status.last_status = "error"
+                status.last_error = str(err)
+                status.run_count += 1
+                status.error_count += 1
+                _LOGGER.error("Task %s failed: %s", task_key, err)
+                log_mgr.log(
+                    LogCategory.SCHEDULER, "ERROR",
+                    f"Task {task_key} failed: {err}",
+                    details={"error": str(err)},
+                )
+
+            status.next_run = datetime.now() + timedelta(seconds=interval)
+
+            try:
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                return
+
+    async def _refresh_canteen(self) -> None:
+        module = self._manager.canteen_module
+        if not module:
+            return
+        self._manager.canteen = await module.get_menu()
+        self._manager.canteen_updated = datetime.now()
+        _LOGGER.debug("Refreshed canteen menu")
 
     async def _wait_for_data(
         self,

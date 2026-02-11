@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { DashboardData, GDriveReport, LogEntry, PromptResponse, PromptVariable, TaskStatus } from '@/types'
+import type { CanteenData, DashboardData, GDriveReport, LogEntry, PromptResponse, PromptVariable, TaskStatus } from '@/types'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -26,6 +26,11 @@ export async function getMarks(student: string) {
 
 export async function getKomens(student: string) {
   const { data } = await api.get(`/students/${student}/komens`)
+  return data
+}
+
+export async function getCanteen(): Promise<CanteenData> {
+  const { data } = await api.get('/canteen')
   return data
 }
 

@@ -1,0 +1,166 @@
+[
+  {
+    "table0": [
+      {
+        "id": 0,
+        "datum": "11.02.2026",
+        "druh_popis": "Přesnídávka ",
+        "druh_chod": "Přesnídávka",
+        "nazev": "Pomazánka z pečené dýně, veka",
+        "delsiPopis": "Pomazánka z pečené dýně, veka",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|07 -Mléko|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["07", "Mléko"]
+        ],
+        "chod": "B",
+        "druh": "PR",
+        "multipleNazev": "meal0",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 1,
+        "datum": "11.02.2026",
+        "druh_popis": "Polévka ",
+        "druh_chod": "Oběd",
+        "nazev": "Zeleninová se sýrovým kapáním",
+        "delsiPopis": "Zeleninová se sýrovým kapáním",
+        "cisloJidelnicku": "1",
+        "polevka": "A",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|03 -Vejce|07 -Mléko|09 -Celer|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["03", "Vejce"],
+          ["07", "Mléko"],
+          ["09", "Celer"]
+        ],
+        "chod": "C",
+        "druh": "PO",
+        "multipleNazev": "meal1",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 2,
+        "datum": "11.02.2026",
+        "druh_popis": "Oběd ",
+        "druh_chod": "Oběd",
+        "nazev": "Krůtí na smetaně a žampionech, rýže",
+        "delsiPopis": "Krůtí na smetaně a žampionech, rýže",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|07 -Mléko|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["07", "Mléko"]
+        ],
+        "chod": "C",
+        "druh": "OB",
+        "multipleNazev": "meal2",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 3,
+        "datum": "11.02.2026",
+        "druh_popis": "dieta ",
+        "druh_chod": "Oběd",
+        "nazev": "Oběd dieta",
+        "delsiPopis": "",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "",
+        "alergeny": [],
+        "chod": "C",
+        "druh": "OD",
+        "multipleNazev": "meal3",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 4,
+        "datum": "11.02.2026",
+        "druh_popis": "Doplněk ",
+        "druh_chod": "Oběd",
+        "nazev": "Čaj, mošt, vitamínový nápoj",
+        "delsiPopis": "Čaj, mošt, vitamínový nápoj",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "",
+        "alergeny": [],
+        "chod": "C",
+        "druh": "DO",
+        "multipleNazev": "meal4",
+        "version": 5,
+        "obrazky": []
+      }
+    ],
+    "table1": [
+      {
+        "id": 0,
+        "datum": "12.02.2026",
+        "druh_popis": "Přesnídávka ",
+        "druh_chod": "Přesnídávka",
+        "nazev": "Pomazánka ze sýru žervé a banány, žitný chléb",
+        "delsiPopis": "Pomazánka ze sýru žervé a banány, žitný chléb",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|07 -Mléko|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["07", "Mléko"]
+        ],
+        "chod": "B",
+        "druh": "PR",
+        "multipleNazev": "meal0",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 1,
+        "datum": "12.02.2026",
+        "druh_popis": "Polévka ",
+        "druh_chod": "Oběd",
+        "nazev": "Hovězí vývar s masem a nudlemi",
+        "delsiPopis": "Hovězí vývar s masem a nudlemi",
+        "cisloJidelnicku": "1",
+        "polevka": "A",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|09 -Celer|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["09", "Celer"]
+        ],
+        "chod": "C",
+        "druh": "PO",
+        "multipleNazev": "meal1",
+        "version": 5,
+        "obrazky": []
+      },
+      {
+        "id": 2,
+        "datum": "12.02.2026",
+        "druh_popis": "Oběd ",
+        "druh_chod": "Oběd",
+        "nazev": "Čevabčiči, americký brambor, dip",
+        "delsiPopis": "Čevabčiči, americký brambor, dip",
+        "cisloJidelnicku": "1",
+        "polevka": "N",
+        "alergeny_text": "01 -Obiloviny obsahující lepek|03 -Vejce|07 -Mléko|10 -Hořčice|",
+        "alergeny": [
+          ["01", "Obiloviny obsahující lepek"],
+          ["03", "Vejce"],
+          ["07", "Mléko"],
+          ["10", "Hořčice"]
+        ],
+        "chod": "C",
+        "druh": "OB",
+        "multipleNazev": "meal2",
+        "version": 5,
+        "obrazky": []
+      }
+    ]
+  }
+]
