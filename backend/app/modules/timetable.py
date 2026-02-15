@@ -14,6 +14,18 @@ from ..const import API_TIMETABLE_ACTUAL, API_TIMETABLE_PERMANENT
 _LOGGER = logging.getLogger("bakalari.timetable")
 
 
+def _get_timetable_date() -> date:
+    """Get the target date for timetable fetching.
+
+    Returns next Monday on weekends, otherwise today.
+    """
+    today = date.today()
+    weekday = today.weekday()
+    if weekday >= 5:  # Saturday=5, Sunday=6
+        return today + timedelta(days=7 - weekday)
+    return today
+
+
 class DayType(Enum):
     """Types of days in the timetable."""
 
@@ -216,7 +228,7 @@ class TimetableModule:
             WeekTimetable containing the week's schedule
         """
         if target_date is None:
-            target_date = date.today()
+            target_date = _get_timetable_date()
 
         params = {"date": target_date.isoformat()}
         response = await self._client.get(API_TIMETABLE_ACTUAL, params=params)

@@ -8,6 +8,7 @@ from ..const import (
     DEFAULT_CANTEEN_UPDATE_INTERVAL,
     DEFAULT_GDRIVE_UPDATE_INTERVAL,
     DEFAULT_KOMENS_UPDATE_INTERVAL,
+    DEFAULT_MAIL_UPDATE_INTERVAL,
     DEFAULT_MARKS_UPDATE_INTERVAL,
     DEFAULT_PREPARE_UPDATE_INTERVAL,
     DEFAULT_SUMMARY_UPDATE_INTERVAL,
@@ -84,6 +85,7 @@ class StudentConfig(BaseModel):
     username: str
     password: str
     gdrive_folder_id: str = ""
+    mail_folder_id: str = ""
     student_info: str = ""
     extra_subjects: list[ExtraSubject] = Field(default_factory=list)
 
@@ -121,6 +123,7 @@ class UpdateIntervalsConfig(BaseModel):
     prepare: int = DEFAULT_PREPARE_UPDATE_INTERVAL
     gdrive: int = DEFAULT_GDRIVE_UPDATE_INTERVAL
     canteen: int = DEFAULT_CANTEEN_UPDATE_INTERVAL
+    mail: int = DEFAULT_MAIL_UPDATE_INTERVAL
 
 
 class PromptsConfig(BaseModel):

@@ -2,10 +2,9 @@
 
 ## 1. Overview
 
-Transform the existing Home Assistant integration into a standalone containerized application with a FastAPI backend and Vue.js frontend. The app provides a widget-rich dashboard for students to quickly get context for the school day.
+Standalone containerized application with a FastAPI backend and Vue.js frontend. The app provides a widget-rich dashboard for students to quickly get context for the school day.
 
 ### Goals
-- Remove all Home Assistant dependencies
 - FastAPI REST API backend
 - Vue 3 frontend with liquid glass minimalistic design
 - Docker-first deployment (all persistent data in mounted `app_data/` volume)

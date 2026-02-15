@@ -126,6 +126,19 @@ export interface TaskStatus {
   error_count: number
 }
 
+export interface MailMessage {
+  id: string
+  subject: string
+  sender: string
+  date: string | null
+  body: string
+}
+
+export interface MailData {
+  total_count: number
+  messages: MailMessage[]
+}
+
 export interface CanteenAllergen {
   code: string
   name: string

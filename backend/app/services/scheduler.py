@@ -16,6 +16,7 @@ from ..modules.summary import (
     get_last_week_range,
     get_next_week_range,
 )
+from ..modules.mail_sync import sync_mail_from_gdrive
 from ..modules.prepare import PrepareData, get_tomorrow
 from .log_manager import LogCategory, get_log_manager
 from .student_manager import StudentContext, StudentManager
@@ -83,6 +84,8 @@ class BackgroundScheduler:
             self._schedule_task(f"prepare:{name}", intervals.prepare, self._refresh_prepare, ctx)
             if ctx.gdrive_client:
                 self._schedule_task(f"gdrive:{name}", intervals.gdrive, self._refresh_gdrive, ctx)
+            if ctx.gdrive_client and ctx.mail_folder_id:
+                self._schedule_task(f"mail:{name}", intervals.mail, self._refresh_mail, ctx)
 
         # Canteen is school-wide, schedule once (not per-student)
         if self._manager.canteen_module:
@@ -377,6 +380,14 @@ class BackgroundScheduler:
 
         if synced:
             _LOGGER.info("Synced %d new GDrive reports for %s", synced, ctx.name)
+
+    async def _refresh_mail(self, ctx: StudentContext) -> None:
+        """Sync new mail files from Google Drive."""
+        gdrive = ctx.gdrive_client
+        if not gdrive or not ctx.mail_folder_id:
+            return
+        await sync_mail_from_gdrive(gdrive, ctx.mail_folder_id, ctx.mail_storage)
+        _LOGGER.debug("Refreshed mail for %s", ctx.name)
 
     def _schedule_canteen_task(self, interval: int) -> None:
         task_key = "canteen:global"

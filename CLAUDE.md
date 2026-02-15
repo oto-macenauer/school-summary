@@ -66,31 +66,41 @@ backend/
       komens.py        # Messages with HTML-to-text
       summary.py       # AI weekly summary with prompt templates
       prepare.py       # Today/tomorrow preparation
+      canteen.py       # School canteen menu (Strava.cz API, external)
     storage/           # Markdown file persistence
       komens_storage.py
       gdrive_storage.py
     services/          # Application services
-      student_manager.py  # Per-student state management
+      student_manager.py  # Per-student state + shared canteen state
       scheduler.py        # Background task scheduler with status tracking
       cache.py            # TTL-based in-memory cache
       log_manager.py      # Ring buffer logger with categories
     api/               # FastAPI routers
-      auth.py, timetable.py, marks.py, komens.py,
+      auth.py, timetable.py, marks.py, komens.py, canteen.py,
       summary.py, prepare.py, dashboard.py, admin.py
     models/config.py   # Pydantic config models
     config.py          # YAML config loader with prompt templates
     dependencies.py    # FastAPI dependency injection
     main.py            # App entry point with lifespan events
-  tests/               # 191 unit tests with fixtures
+  tests/               # ~300 unit tests with fixtures
 
 frontend/              # Vue 3 + TypeScript + Vite
   src/
     components/        # Layout, UI primitives, dashboard widgets
-    views/             # Dashboard, Timetable, Marks, Komens, Admin
+    views/             # Dashboard, Timetable, Marks, Komens, Canteen, Admin
     stores/            # Pinia state management
     api/client.ts      # Typed HTTP client
-    styles/            # Liquid glass design system
+    types/index.ts     # TypeScript interfaces for all API responses
+    styles/            # Liquid glass design system (CSS custom properties)
 ```
+
+### Key Architectural Patterns
+
+- **Modules** (`backend/app/modules/`): Dataclasses with `from_api_response()` classmethod + `to_dict()`/`to_summary_dict()` serialization. Module class takes a client/session, exposes async `get_*()` methods.
+- **API routers** (`backend/app/api/`): Thin — get student context via `get_student_or_404(name)`, return cached data or fetch fresh.
+- **Per-student vs shared**: Most modules are per-student (on `StudentContext`). Canteen is school-wide (on `StudentManager`), scheduled once globally.
+- **Scheduler**: `_schedule_task()` creates periodic async tasks per student. Canteen uses separate `_schedule_canteen_task()` for its global task.
+- **Frontend views**: `<script setup lang="ts">` composition API, fetch on `onMounted` + `watch(() => store.current)`, use `GlassCard` component and CSS custom properties from the design system.
 
 ## Configuration
 
@@ -99,29 +109,38 @@ YAML-based config at `app_data/config.yaml` (auto-generated on first startup):
 - `students`: List of student configs with name, username, password
 - `gemini_api_key`: Optional, enables AI summaries
 - `gdrive`: Google Drive service account config for weekly reports
+- `canteen`: Strava.cz canteen config (`cislo`, `s5url`, `lang`) — optional, enables canteen menu
 - `update_intervals`: Per-module refresh intervals in seconds
 - `prompts`: Editable AI prompt templates using `{variable}` syntax
 
 ## Build Commands
 
-```bash
+This is a Windows environment. Use `powershell.exe -Command "..."` to run commands:
+
+```powershell
 # Run all backend tests
-cd backend && pytest tests/ -v
+powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\ -v"
 
 # Run specific test file
-cd backend && pytest tests/test_auth.py -v
+powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\test_auth.py -v"
 
 # Run specific test
-cd backend && pytest tests/test_auth.py -v -k "test_login_success"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\test_auth.py -v -k 'test_login_success'"
 
 # Run with coverage
-cd backend && pytest tests/ -v --cov=app --cov-report=html
+powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\ -v --cov=app --cov-report=html"
+
+# Type-check frontend
+powershell.exe -Command "cd c:\Projects\school-summary\frontend; npx vue-tsc --noEmit"
+
+# Build frontend
+powershell.exe -Command "cd c:\Projects\school-summary\frontend; npm run build"
 
 # Start backend dev server
-cd backend && uvicorn app.main:app --reload --port 8000
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uvicorn app.main:app --reload --port 8000"
 
 # Start frontend dev server
-cd frontend && npm run dev
+powershell.exe -Command "cd c:\Projects\school-summary\frontend; npm run dev"
 
 # Docker
 docker compose up --build
@@ -145,14 +164,18 @@ backend/tests/
   test_gemini.py           # Gemini AI client tests
   test_summary.py          # Weekly summary tests
   test_prepare.py          # Today/tomorrow preparation tests
+  test_canteen.py          # Canteen module tests
   test_cache.py            # In-memory cache tests
   test_log_manager.py      # Log manager tests
   test_config.py           # YAML config loader tests
+  test_scheduler.py        # Scheduler lifecycle tests
+  test_prompt_variables.py # Prompt variable resolution tests
   fixtures/                # Sample API response JSON files
     login_response.json
     timetable_response.json
     marks_response.json
     komens_response.json
+    canteen_response.json
 ```
 
 ### Coverage Requirements

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,7 @@ from app.modules.timetable import (
     TimetableDay,
     TimetableModule,
     WeekTimetable,
+    _get_timetable_date,
 )
 
 from .conftest import load_fixture
@@ -233,3 +234,29 @@ class TestTimetableModule:
         # Check first lesson
         first_lesson = work_days[0].lessons[0]
         assert first_lesson.subject_name == "Matematika"
+
+
+class TestGetTimetableDate:
+    """Tests for _get_timetable_date helper."""
+
+    @patch("app.modules.timetable.date")
+    def test_returns_today_on_weekday(self, mock_date: MagicMock) -> None:
+        """Test that weekdays return today's date."""
+        # Wednesday
+        mock_date.today.return_value = date(2026, 2, 11)
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+        assert _get_timetable_date() == date(2026, 2, 11)
+
+    @patch("app.modules.timetable.date")
+    def test_returns_next_monday_on_saturday(self, mock_date: MagicMock) -> None:
+        """Test that Saturday returns next Monday."""
+        mock_date.today.return_value = date(2026, 2, 14)  # Saturday
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+        assert _get_timetable_date() == date(2026, 2, 16)  # Monday
+
+    @patch("app.modules.timetable.date")
+    def test_returns_next_monday_on_sunday(self, mock_date: MagicMock) -> None:
+        """Test that Sunday returns next Monday."""
+        mock_date.today.return_value = date(2026, 2, 15)  # Sunday
+        mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
+        assert _get_timetable_date() == date(2026, 2, 16)  # Monday

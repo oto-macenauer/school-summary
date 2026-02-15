@@ -23,6 +23,7 @@ from ..modules.summary import SummaryData, SummaryModule
 from ..modules.timetable import TimetableModule, WeekTimetable
 from ..storage.gdrive_storage import GDriveStorage
 from ..storage.komens_storage import KomensStorage
+from ..storage.mail_storage import MailStorage
 
 _LOGGER = logging.getLogger("bakalari.student_manager")
 
@@ -40,7 +41,9 @@ class StudentContext:
     prepare_module: PrepareModule
     komens_storage: KomensStorage
     gdrive_storage: GDriveStorage
+    mail_storage: MailStorage
     gdrive_client: GoogleDriveClient | None = None
+    mail_folder_id: str = ""
     student_info: str = ""
 
     # Cached data
@@ -133,9 +136,10 @@ class StudentManager:
         app_data = get_app_data_dir()
         komens_base = app_data / "komens"
         gdrive_base = app_data / "gdrive"
+        mail_base = app_data / "mail"
 
         for student_cfg in config.students:
-            await self._setup_student(student_cfg, config, komens_base, gdrive_base)
+            await self._setup_student(student_cfg, config, komens_base, gdrive_base, mail_base)
 
     async def _setup_student(
         self,
@@ -143,6 +147,7 @@ class StudentManager:
         app_config: AppConfig,
         komens_base: Path,
         gdrive_base: Path,
+        mail_base: Path,
     ) -> None:
         """Set up a single student context."""
         client = BakalariClient(app_config.base_url, cfg.username, cfg.password, session=self._session)
@@ -158,6 +163,9 @@ class StudentManager:
         komens_storage.load_index()
 
         gdrive_storage = GDriveStorage(gdrive_base, cfg.name)
+
+        mail_storage = MailStorage(mail_base, cfg.name)
+        mail_storage.load_index()
 
         # Create per-student Google Drive client
         gdrive_client = None
@@ -190,7 +198,9 @@ class StudentManager:
             prepare_module=PrepareModule(komens_path, cfg.name),
             komens_storage=komens_storage,
             gdrive_storage=gdrive_storage,
+            mail_storage=mail_storage,
             gdrive_client=gdrive_client,
+            mail_folder_id=cfg.mail_folder_id,
             student_info=cfg.student_info,
         )
         self._students[cfg.name] = ctx

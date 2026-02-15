@@ -22,6 +22,7 @@ students:
     username: "username"
     password: "password"
     # student_info: "Třída 5.A, třídní učitelka Mgr. Nováková"
+    # mail_folder_id: ""  # Google Drive folder ID with synced Gmail MD files
     extra_subjects:
       # - name: "Angličtina kroužek"
       #   time: "14:00"
@@ -46,6 +47,7 @@ update_intervals:
   summary: 86400
   prepare: 3600
   canteen: 3600
+  mail: 900
 
 # ──────────────────────────────────────────────
 # Prompt Templates
