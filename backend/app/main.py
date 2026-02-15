@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger("bakalari.system")
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic."""
     log_manager = setup_logging()
-    _LOGGER.info("Starting Bakalari application")
+    _LOGGER.info("Starting Školní přehled application")
 
     # Generate default config if needed
     generate_default_config()
@@ -52,14 +52,14 @@ async def lifespan(app: FastAPI):
     yield
 
     # Shutdown
-    _LOGGER.info("Shutting down Bakalari application")
+    _LOGGER.info("Shutting down Školní přehled application")
     await scheduler.stop()
     await manager.shutdown()
 
 
 app = FastAPI(
-    title="Bakalari",
-    description="Bakalari school information system dashboard",
+    title="Školní přehled",
+    description="School overview dashboard with Bakalari integration",
     version="1.0.0",
     lifespan=lifespan,
 )

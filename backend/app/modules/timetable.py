@@ -187,6 +187,14 @@ class WeekTimetable:
                 return day
         return None
 
+    def get_closest_school_day(self, target_date: date) -> TimetableDay | None:
+        """Get the closest school day on or after the target date."""
+        future_days = sorted(
+            (d for d in self.days if d.is_school_day and d.date >= target_date),
+            key=lambda d: d.date,
+        )
+        return future_days[0] if future_days else None
+
     def get_subject_name_mapping(self) -> dict[str, str]:
         """Get mapping of abbreviations to full subject names."""
         mapping: dict[str, str] = {}

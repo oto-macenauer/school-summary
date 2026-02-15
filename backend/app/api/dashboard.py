@@ -14,10 +14,10 @@ async def get_dashboard(name: str):
     """Get all widget data in one call."""
     ctx = get_student_or_404(name)
 
-    # Today's timetable
+    # Closest school day timetable
     today_timetable = None
     if ctx.timetable:
-        day = ctx.timetable.get_day(date.today())
+        day = ctx.timetable.get_closest_school_day(date.today())
         if day:
             today_timetable = day.to_detailed_dict()
 

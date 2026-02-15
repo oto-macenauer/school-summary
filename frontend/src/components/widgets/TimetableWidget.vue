@@ -25,6 +25,16 @@ interface GroupedLesson {
 }
 
 const dayMap: Record<number, string> = { 1: 'po', 2: 'ut', 3: 'st', 4: 'ct', 5: 'pa' }
+const dayNames: Record<number, string> = { 1: 'pondělí', 2: 'úterý', 3: 'středu', 4: 'čtvrtek', 5: 'pátek' }
+
+const cardTitle = computed(() => {
+  if (!props.data?.date) return 'Rozvrh dnes'
+  const today = new Date().toISOString().slice(0, 10)
+  if (props.data.date === today) return 'Rozvrh dnes'
+  const d = new Date(props.data.date)
+  const name = dayNames[d.getDay()]
+  return name ? `Rozvrh na ${name}` : 'Rozvrh dnes'
+})
 
 function timeToMinutes(t: string): number {
   const [h, m] = t.split(':').map(Number)
@@ -53,11 +63,12 @@ const groupedLessons = computed<GroupedLesson[]>(() => {
     }
   }
 
-  // Merge today's extra subjects
+  // Merge extra subjects for the displayed day
   if (props.extraSubjects?.length) {
-    const todayKey = dayMap[new Date().getDay()]
+    const targetDay = props.data?.date ? new Date(props.data.date).getDay() : new Date().getDay()
+    const targetKey = dayMap[targetDay]
     for (const ex of props.extraSubjects) {
-      if (todayKey && ex.days?.includes(todayKey)) {
+      if (targetKey && ex.days?.includes(targetKey)) {
         groups.push({
           begin_time: ex.time,
           end_time: '',
@@ -77,7 +88,7 @@ const groupedLessons = computed<GroupedLesson[]>(() => {
 </script>
 
 <template>
-  <GlassCard title="Rozvrh dnes">
+  <GlassCard :title="cardTitle">
     <div v-if="data && data.is_school_day" class="lessons">
       <div
         v-for="(l, i) in groupedLessons"

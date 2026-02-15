@@ -48,7 +48,7 @@ function closeMenu() {
 <template>
   <header class="header">
     <div class="header__left">
-      <RouterLink :to="`/${slug}`" class="header__logo" @click="closeMenu">Bakalari</RouterLink>
+      <RouterLink :to="`/${slug}`" class="header__logo" @click="closeMenu">Školní přehled</RouterLink>
       <button class="header__burger" :class="{ 'header__burger--open': menuOpen }" @click="menuOpen = !menuOpen" aria-label="Menu">
         <span></span><span></span><span></span>
       </button>

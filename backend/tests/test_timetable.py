@@ -164,6 +164,37 @@ class TestWeekTimetable:
         week = WeekTimetable(days=[])
         assert week.get_day(date(2024, 12, 9)) is None
 
+    def test_get_closest_school_day_today(self) -> None:
+        """Test closest school day when today is a school day."""
+        days = [
+            TimetableDay(date(2024, 12, 9), DayType.WORK_DAY, None, []),
+            TimetableDay(date(2024, 12, 10), DayType.WORK_DAY, None, []),
+        ]
+        week = WeekTimetable(days=days)
+        found = week.get_closest_school_day(date(2024, 12, 9))
+        assert found is not None
+        assert found.date == date(2024, 12, 9)
+
+    def test_get_closest_school_day_skips_weekend(self) -> None:
+        """Test closest school day skips non-school days."""
+        days = [
+            TimetableDay(date(2024, 12, 14), DayType.WEEKEND, None, []),
+            TimetableDay(date(2024, 12, 15), DayType.WEEKEND, None, []),
+            TimetableDay(date(2024, 12, 16), DayType.WORK_DAY, None, []),
+        ]
+        week = WeekTimetable(days=days)
+        found = week.get_closest_school_day(date(2024, 12, 14))
+        assert found is not None
+        assert found.date == date(2024, 12, 16)
+
+    def test_get_closest_school_day_none(self) -> None:
+        """Test closest school day when none available."""
+        days = [
+            TimetableDay(date(2024, 12, 14), DayType.WEEKEND, None, []),
+        ]
+        week = WeekTimetable(days=days)
+        assert week.get_closest_school_day(date(2024, 12, 14)) is None
+
     def test_to_summary_dict(self) -> None:
         """Test conversion to summary dict."""
         lesson = MagicMock(subject_name="Math", subject_abbrev="M")

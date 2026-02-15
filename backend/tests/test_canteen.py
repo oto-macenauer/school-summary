@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -230,13 +231,37 @@ class TestCanteenModule:
 
         mock_session.post.assert_called_once()
         call_args = mock_session.post.call_args
-        assert call_args[1]["json"]["cislo"] == "11199"
+        sent_body = json.loads(call_args[1]["data"])
+        assert sent_body["cislo"] == "11199"
 
     @pytest.mark.asyncio
-    async def test_get_menu_error(self) -> None:
-        """Test handling API error."""
+    async def test_get_menu_strava_api_error(self) -> None:
+        """Test handling Strava API error response (HTTP 555)."""
+        error_body = {"state": "error", "number": "99+", "message": "Chyba odchycena v api callu"}
+        mock_resp = AsyncMock()
+        mock_resp.status = 555
+        mock_resp.json = AsyncMock(return_value=error_body)
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_resp)
+
+        module = CanteenModule(
+            session=mock_session,
+            cislo="11199",
+            s5url="https://example.com",
+        )
+
+        with pytest.raises(RuntimeError, match="Strava API error: Chyba odchycena v api callu"):
+            await module.get_menu()
+
+    @pytest.mark.asyncio
+    async def test_get_menu_http_error(self) -> None:
+        """Test handling non-Strava HTTP error."""
         mock_resp = AsyncMock()
         mock_resp.status = 500
+        mock_resp.json = AsyncMock(return_value={})
         mock_resp.raise_for_status = MagicMock(side_effect=Exception("Server error"))
         mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
         mock_resp.__aexit__ = AsyncMock(return_value=None)

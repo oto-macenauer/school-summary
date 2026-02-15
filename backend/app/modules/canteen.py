@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -147,9 +148,19 @@ class CanteenModule:
             "ignoreCert": False,
         }
 
-        async with self._session.post(CANTEEN_API_URL, json=payload) as resp:
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36",
+            "Content-Type": "text/plain;charset=UTF-8",
+            "Origin": "https://app.strava.cz",
+            "Referer": f"https://app.strava.cz/jidelnicky?jidelna={self._cislo}",
+        }
+
+        async with self._session.post(CANTEEN_API_URL, data=json.dumps(payload), headers=headers) as resp:
+            raw = await resp.json(content_type=None)
+            if isinstance(raw, dict) and raw.get("state") == "error":
+                msg = raw.get("message", "Unknown error")
+                raise RuntimeError(f"Strava API error: {msg}")
             resp.raise_for_status()
-            raw = await resp.json()
 
         days = parse_canteen_response(raw)
         _LOGGER.debug("Fetched canteen menu: %d days", len(days))

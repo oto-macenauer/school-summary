@@ -1,12 +1,13 @@
-# Bakalari Dashboard
+# Školní přehled
 
-Standalone web dashboard for the Bakalari school information system. Aggregates timetables, grades, messages, and AI-generated summaries into a single page.
+School overview dashboard integrating multiple school systems — Bakalari, Strava.cz canteen, and more. Aggregates timetables, grades, messages, canteen menus, and AI-generated summaries into a single page.
 
 ## Features
 
 - **Timetable** — weekly schedule with subjects, teachers, rooms, and changes
 - **Marks** — grades with per-subject and overall averages
 - **Komens** — school messages saved locally as Markdown files
+- **Canteen** — daily menu from Strava.cz with allergen info
 - **AI Summary** — Gemini-powered weekly summaries (last/current/next week) with Google Drive report integration
 - **Preparation** — AI-generated daily briefs for today and tomorrow
 - **Admin** — read-only view of scheduler status, categorized logs, config, and Gemini usage
@@ -41,7 +42,7 @@ docker-compose.yml
 
 - Python 3.11+
 - Node.js 18+
-- A Bakalari school account
+- A Bakalari school account (for timetable, marks, messages)
 - (Optional) Gemini API key for AI features
 - (Optional) Google Drive service account for weekly reports
 
