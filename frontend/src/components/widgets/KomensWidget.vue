@@ -23,7 +23,7 @@ function truncate(text: string, max: number): string {
         <RouterLink
           v-for="m in data.recent_messages?.slice(0, 5)"
           :key="m.id"
-          :to="{ name: 'komens', params: { student: store.current?.toLowerCase() } }"
+          :to="{ name: 'resources', params: { student: store.current?.toLowerCase() } }"
           class="msg"
           :class="{ 'msg--unread': !m.is_read }"
         >

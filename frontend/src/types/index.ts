@@ -139,6 +139,19 @@ export interface MailData {
   messages: MailMessage[]
 }
 
+export type ResourceCategory = 'komens' | 'mail' | 'report'
+
+export interface ResourceItem {
+  id: string
+  category: ResourceCategory
+  title: string
+  sender: string | null
+  date: string | null
+  body: string
+  isRead?: boolean
+  isMarkdown?: boolean
+}
+
 export interface CanteenAllergen {
   code: string
   name: string
