@@ -29,6 +29,7 @@ students:
       #   days: ["po", "st"]
 
 gemini_api_key: ""
+gemini_model: "gemini-2.5-flash-lite"
 
 gdrive:
   service_account_path: ""

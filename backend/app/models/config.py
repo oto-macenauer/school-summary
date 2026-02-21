@@ -142,6 +142,7 @@ class AppConfig(BaseModel):
     base_url: str = ""
     students: list[StudentConfig] = Field(default_factory=list)
     gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash-lite"
     gdrive: GDriveConfig = Field(default_factory=GDriveConfig)
     canteen: CanteenConfig = Field(default_factory=CanteenConfig)
     update_intervals: UpdateIntervalsConfig = Field(

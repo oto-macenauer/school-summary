@@ -80,6 +80,9 @@ async def reload_config():
         manager = get_manager()
         config = load_config()
         manager._config = config
+        # Propagate model change to existing Gemini client
+        if manager.gemini and config.gemini_model:
+            manager.gemini._model = config.gemini_model
         return {"status": "ok", "message": "Configuration reloaded"}
     except Exception as err:
         return {"status": "error", "message": str(err)}

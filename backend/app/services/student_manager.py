@@ -119,8 +119,12 @@ class StudentManager:
 
         # Initialize Gemini client
         if config.gemini_api_key:
-            self._gemini = GeminiClient(config.gemini_api_key, session=self._session)
-            _LOGGER.info("Gemini client initialized")
+            self._gemini = GeminiClient(
+                config.gemini_api_key,
+                session=self._session,
+                model=config.gemini_model,
+            )
+            _LOGGER.info("Gemini client initialized (model: %s)", config.gemini_model)
 
         # Initialize canteen module (school-wide, not per-student)
         canteen_cfg = config.canteen

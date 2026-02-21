@@ -355,6 +355,108 @@ class TestRefreshPrepareWait:
 
 
 # ---------------------------------------------------------------------------
+# Prompt dedup tests
+# ---------------------------------------------------------------------------
+
+class TestPromptDedup:
+    """Tests for prompt-based deduplication in AI tasks."""
+
+    @pytest.mark.asyncio
+    async def test_summary_skips_when_prompt_unchanged(self, scheduler, mock_student_context):
+        """Should skip Gemini call when prompt hasn't changed since last run."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+        mock_student_context.marks = MagicMock()
+        mock_student_context.gdrive_client = None
+
+        mock_student_context.summary_module.get_week_messages.return_value = []
+        mock_student_context.summary_module.extract_new_marks.return_value = []
+        mock_student_context.summary_module.build_prompt_from_template.return_value = "same prompt"
+
+        gemini_mock = AsyncMock(return_value="summary text")
+        scheduler._manager.gemini.generate_content = gemini_mock
+
+        # First call — should call Gemini
+        await scheduler._refresh_summary(mock_student_context)
+        assert gemini_mock.call_count == 3  # last, current, next
+
+        # Second call — same prompt, should skip all 3
+        gemini_mock.reset_mock()
+        await scheduler._refresh_summary(mock_student_context)
+        assert gemini_mock.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_summary_calls_when_prompt_changes(self, scheduler, mock_student_context):
+        """Should call Gemini again when prompt changes."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+        mock_student_context.marks = MagicMock()
+        mock_student_context.gdrive_client = None
+
+        mock_student_context.summary_module.get_week_messages.return_value = []
+        mock_student_context.summary_module.extract_new_marks.return_value = []
+        mock_student_context.summary_module.build_prompt_from_template.return_value = "prompt v1"
+
+        gemini_mock = AsyncMock(return_value="summary text")
+        scheduler._manager.gemini.generate_content = gemini_mock
+
+        # First run
+        await scheduler._refresh_summary(mock_student_context)
+        assert gemini_mock.call_count == 3
+
+        # Change prompt
+        gemini_mock.reset_mock()
+        mock_student_context.summary_module.build_prompt_from_template.return_value = "prompt v2"
+        await scheduler._refresh_summary(mock_student_context)
+        assert gemini_mock.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_prepare_skips_when_prompt_unchanged(self, scheduler, mock_student_context):
+        """Should skip Gemini call for prepare when prompt hasn't changed."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+
+        mock_student_context.prepare_module.get_relevant_messages.return_value = []
+        mock_student_context.prepare_module.build_prompt_from_template.return_value = "same prompt"
+        mock_student_context.prepare_module.format_lessons.return_value = ("", 0)
+
+        gemini_mock = AsyncMock(return_value="prep text")
+        scheduler._manager.gemini.generate_content = gemini_mock
+
+        # First call — should call Gemini
+        await scheduler._refresh_prepare(mock_student_context)
+        assert gemini_mock.call_count == 2  # today, tomorrow
+
+        # Second call — same prompt, should skip both
+        gemini_mock.reset_mock()
+        await scheduler._refresh_prepare(mock_student_context)
+        assert gemini_mock.call_count == 0
+
+    @pytest.mark.asyncio
+    async def test_prepare_calls_when_prompt_changes(self, scheduler, mock_student_context):
+        """Should call Gemini again for prepare when prompt changes."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+
+        mock_student_context.prepare_module.get_relevant_messages.return_value = []
+        mock_student_context.prepare_module.build_prompt_from_template.return_value = "prompt v1"
+        mock_student_context.prepare_module.format_lessons.return_value = ("", 0)
+
+        gemini_mock = AsyncMock(return_value="prep text")
+        scheduler._manager.gemini.generate_content = gemini_mock
+
+        # First run
+        await scheduler._refresh_prepare(mock_student_context)
+        assert gemini_mock.call_count == 2
+
+        # Change prompt
+        gemini_mock.reset_mock()
+        mock_student_context.prepare_module.build_prompt_from_template.return_value = "prompt v2"
+        await scheduler._refresh_prepare(mock_student_context)
+        assert gemini_mock.call_count == 2
+
+
+# ---------------------------------------------------------------------------
 # Scheduler lifecycle tests
 # ---------------------------------------------------------------------------
 

@@ -63,6 +63,7 @@ class BackgroundScheduler:
         self._tasks: list[asyncio.Task] = []
         self._task_statuses: dict[str, TaskStatus] = {}
         self._running = False
+        self._last_prompts: dict[str, str] = {}
 
     @property
     def task_statuses(self) -> dict[str, TaskStatus]:
@@ -253,10 +254,20 @@ class BackgroundScheduler:
                 student_info=ctx.student_info,
             )
 
+            cache_key = f"summary:{ctx.name}:{week_type}"
+            prompt_fingerprint = prompt + "\0" + (prompts.summary_system or "")
+
+            if self._last_prompts.get(cache_key) == prompt_fingerprint:
+                _LOGGER.debug(
+                    "Skipping summary %s for %s (prompt unchanged)", week_type, ctx.name,
+                )
+                continue
+
             text = await gemini.generate_content(
                 prompt=prompt,
                 system_instruction=prompts.summary_system,
             )
+            self._last_prompts[cache_key] = prompt_fingerprint
 
             summary = SummaryData(
                 student_name=ctx.name,
@@ -313,10 +324,20 @@ class BackgroundScheduler:
                 student_info=ctx.student_info,
             )
 
+            cache_key = f"prepare:{ctx.name}:{period}"
+            prompt_fingerprint = prompt + "\0" + (prompts.prepare_system or "")
+
+            if self._last_prompts.get(cache_key) == prompt_fingerprint:
+                _LOGGER.debug(
+                    "Skipping prepare %s for %s (prompt unchanged)", period, ctx.name,
+                )
+                continue
+
             text = await gemini.generate_content(
                 prompt=prompt,
                 system_instruction=prompts.prepare_system,
             )
+            self._last_prompts[cache_key] = prompt_fingerprint
 
             _, lessons_count = ctx.prepare_module.format_lessons(ctx.timetable, target_date)
 

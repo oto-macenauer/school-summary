@@ -179,7 +179,7 @@ async def test_close_session(gemini_client, mock_session):
 @pytest.mark.asyncio
 async def test_close_owned_session():
     """Test session is closed when owned."""
-    client = GeminiClient(api_key="test_key")
+    client = GeminiClient(api_key="test_key", model="gemini-2.5-flash-lite")
     mock_session = MagicMock()
     mock_session.closed = False
     mock_session.close = AsyncMock()

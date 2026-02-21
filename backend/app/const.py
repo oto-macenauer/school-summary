@@ -4,7 +4,6 @@ from typing import Final
 
 # Gemini API constants
 GEMINI_API_URL: Final = "https://generativelanguage.googleapis.com/v1beta/models"
-GEMINI_MODEL: Final = "gemini-2.5-flash-lite"
 
 # Bakalari API constants
 API_CLIENT_ID: Final = "ANDR"

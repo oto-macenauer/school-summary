@@ -35,6 +35,7 @@ class TestAppConfig:
         assert config.base_url == ""
         assert config.students == []
         assert config.gemini_api_key == ""
+        assert config.gemini_model == "gemini-2.5-flash-lite"
         assert isinstance(config.gdrive, GDriveConfig)
         assert isinstance(config.update_intervals, UpdateIntervalsConfig)
         assert isinstance(config.prompts, PromptsConfig)
@@ -215,9 +216,48 @@ update_intervals:
         assert "base_url" in data
         assert "students" in data
         assert "gemini_api_key" in data
+        assert "gemini_model" in data
         assert "update_intervals" in data
         assert "prompts" in data
 
         # Should be valid for AppConfig
         config = AppConfig.model_validate(data)
         assert isinstance(config, AppConfig)
+        assert config.gemini_model == "gemini-2.5-flash-lite"
+
+    def test_gemini_model_from_yaml(self, tmp_path: Path) -> None:
+        """Test loading custom gemini_model from YAML."""
+        config_dir = tmp_path / "app_data"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "config.yaml"
+
+        yaml_content = """
+base_url: "https://test.school.cz"
+students: []
+gemini_api_key: "key"
+gemini_model: "gemini-2.0-flash"
+"""
+        config_file.write_text(yaml_content, encoding="utf-8")
+
+        with patch("app.config.get_config_path", return_value=config_file):
+            config = load_config()
+
+        assert config.gemini_model == "gemini-2.0-flash"
+
+    def test_gemini_model_defaults_when_missing(self, tmp_path: Path) -> None:
+        """Test that gemini_model defaults when not in YAML."""
+        config_dir = tmp_path / "app_data"
+        config_dir.mkdir(parents=True)
+        config_file = config_dir / "config.yaml"
+
+        yaml_content = """
+base_url: "https://test.school.cz"
+students: []
+gemini_api_key: "key"
+"""
+        config_file.write_text(yaml_content, encoding="utf-8")
+
+        with patch("app.config.get_config_path", return_value=config_file):
+            config = load_config()
+
+        assert config.gemini_model == "gemini-2.5-flash-lite"

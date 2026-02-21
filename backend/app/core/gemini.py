@@ -9,7 +9,7 @@ from typing import Any
 
 import aiohttp
 
-from ..const import GEMINI_API_URL, GEMINI_MODEL
+from ..const import GEMINI_API_URL
 
 _LOGGER = logging.getLogger("bakalari.gemini")
 
@@ -87,7 +87,8 @@ class GeminiClient:
         self,
         api_key: str,
         session: aiohttp.ClientSession | None = None,
-        model: str = GEMINI_MODEL,
+        *,
+        model: str,
     ) -> None:
         self._api_key = api_key
         self._session = session
