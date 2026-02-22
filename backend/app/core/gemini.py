@@ -106,7 +106,7 @@ class GeminiClient:
         self,
         prompt: str,
         system_instruction: str | None = None,
-        max_tokens: int = 1024,
+        max_tokens: int = 8192,
         temperature: float = 0.7,
     ) -> str:
         session = await self._ensure_session()
@@ -160,7 +160,14 @@ class GeminiClient:
             candidates = response.get("candidates", [])
             if not candidates:
                 raise GeminiApiError("No candidates in response")
-            parts = candidates[0].get("content", {}).get("parts", [])
+            candidate = candidates[0]
+            finish_reason = candidate.get("finishReason", "")
+            if finish_reason == "MAX_TOKENS":
+                _LOGGER.warning(
+                    "Gemini response truncated due to max_tokens limit. "
+                    "Consider increasing max_tokens."
+                )
+            parts = candidate.get("content", {}).get("parts", [])
             if not parts:
                 raise GeminiApiError("No parts in response content")
             return parts[0].get("text", "")

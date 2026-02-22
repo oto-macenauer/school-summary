@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -47,7 +48,8 @@ def successful_response():
                     "parts": [
                         {"text": "Tento týden Alice dostala novou známku z matematiky."}
                     ]
-                }
+                },
+                "finishReason": "STOP",
             }
         ],
         "usageMetadata": {
@@ -166,6 +168,36 @@ async def test_generate_content_empty_parts(gemini_client, mock_session):
 
     with pytest.raises(GeminiApiError, match="No parts"):
         await gemini_client.generate_content(prompt="Test")
+
+
+@pytest.mark.asyncio
+async def test_generate_content_truncated_warns(gemini_client, mock_session, caplog):
+    """Test that truncated response (MAX_TOKENS) logs a warning."""
+    truncated_response = {
+        "candidates": [
+            {
+                "content": {
+                    "parts": [
+                        {"text": "Tento týden Alice dostala novou známku z mate"}
+                    ]
+                },
+                "finishReason": "MAX_TOKENS",
+            }
+        ],
+        "usageMetadata": {
+            "promptTokenCount": 150,
+            "candidatesTokenCount": 1024,
+            "totalTokenCount": 1174,
+        }
+    }
+    mock_response = create_mock_response(200, truncated_response)
+    mock_session.post = MagicMock(return_value=mock_response)
+
+    with caplog.at_level(logging.WARNING, logger="bakalari.gemini"):
+        result = await gemini_client.generate_content(prompt="Test")
+
+    assert result == "Tento týden Alice dostala novou známku z mate"
+    assert "truncated" in caplog.text.lower()
 
 
 @pytest.mark.asyncio
