@@ -464,6 +464,9 @@ class BackgroundScheduler:
         if not taggable:
             return
 
+        # Tag most recent messages first
+        taggable.sort(key=lambda m: m.sent_date or date.min, reverse=True)
+
         results = await tagger.tag_messages(taggable)
 
         written = 0
