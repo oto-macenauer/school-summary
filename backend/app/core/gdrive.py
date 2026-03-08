@@ -269,6 +269,24 @@ class GoogleDriveClient:
                         return file
         return None
 
+    async def _find_week_file_in_root(self, week_number: int) -> dict[str, str] | None:
+        """Search the root reports folder for a file matching 'Week N'."""
+        query = (
+            f"'{self._reports_folder_id}' in parents and trashed = false "
+            f"and mimeType != 'application/vnd.google-apps.folder'"
+        )
+        params = {"q": query, "fields": "files(id, name, mimeType)", "pageSize": "100"}
+        response = await self._api_request("GET", GDRIVE_FILES_ENDPOINT, params=params)
+        if response.status != 200:
+            return None
+        files = (await response.json()).get("files", [])
+        for file in files:
+            if self._matches_week_number(file.get("name", ""), week_number):
+                mime = file.get("mimeType", "")
+                if mime in (GOOGLE_DOCS_MIME, DOCX_MIME, "text/plain"):
+                    return file
+        return None
+
     async def get_week_report(
         self, week_number: int | None = None, target_date: date | None = None,
     ) -> WeeklyReport | None:
@@ -284,6 +302,10 @@ class GoogleDriveClient:
 
         # Search month subfolders for "Week N" files
         document = await self._find_week_file_in_subfolders(week_number)
+
+        # Search root folder for "Week N" files
+        if not document:
+            document = await self._find_week_file_in_root(week_number)
 
         # Fallback: look for a dedicated week folder (e.g. folder named "14")
         if not document:

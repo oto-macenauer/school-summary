@@ -162,6 +162,7 @@ export interface ResourceItem {
   date: string | null
   body: string
   isRead?: boolean
+  isConfirmed?: boolean
   isMarkdown?: boolean
   tags?: MessageTags
 }
