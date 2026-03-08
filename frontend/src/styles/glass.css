@@ -14,7 +14,7 @@
   box-shadow: var(--glass-shadow), 0 0 0 1px rgba(255, 255, 255, 0.05);
 }
 
-.glass-card h3 {
+.glass-card > h3 {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;

@@ -25,9 +25,10 @@ const renderedText = computed(() => {
 <style scoped>
 .prepare__text { font-size: var(--font-size-base); line-height: 1.6; }
 .prepare__text :deep(p) { margin: 0 0 0.5em; }
-.prepare__text :deep(ul) { margin: 0.25em 0; padding-left: 1.5em; }
+.prepare__text :deep(ul),
+.prepare__text :deep(ol) { margin: 0.25em 0; padding-left: 1.5em; }
 .prepare__text :deep(li) { margin: 0.15em 0; }
-.prepare__text :deep(li > ol) { list-style-type: none; }
+.prepare__text :deep(li > ol) { list-style-type: none; padding-left: 0; }
 .prepare__text :deep(strong) { font-weight: 600; }
 .prepare__meta { display: block; margin-top: var(--space-md); font-size: var(--font-size-xs); color: var(--text-muted); }
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }
