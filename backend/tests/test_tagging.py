@@ -231,7 +231,7 @@ class TestTaggingModule:
     async def test_tag_messages_batch_splitting(
         self, tagger: TaggingModule, mock_gemini: MagicMock,
     ) -> None:
-        """12 messages should result in 2 Gemini calls (10+2)."""
+        """12 messages should result in 3 Gemini calls (5+5+2)."""
         messages = [
             TaggableMessage(
                 message_id=f"MSG{i:03d}",
@@ -245,7 +245,7 @@ class TestTaggingModule:
         mock_gemini.generate_content.return_value = json.dumps({})
 
         await tagger.tag_messages(messages)
-        assert mock_gemini.generate_content.call_count == 2
+        assert mock_gemini.generate_content.call_count == 3
 
     @pytest.mark.asyncio
     async def test_tag_messages_gemini_error(

@@ -13,7 +13,7 @@ from ..core.gemini import GeminiClient
 
 _LOGGER = logging.getLogger("bakalari.tagging")
 
-BATCH_SIZE = 10
+BATCH_SIZE = 5
 
 
 @dataclass
@@ -124,7 +124,7 @@ class TaggingModule:
             response = await self._gemini.generate_content(
                 prompt=prompt,
                 system_instruction=system,
-                max_tokens=2048,
+                max_tokens=8192,
                 temperature=0.1,
             )
             return self._parse_response(response, messages)
