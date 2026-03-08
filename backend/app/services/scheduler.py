@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import time
 from dataclasses import dataclass, field
@@ -78,6 +79,23 @@ class BackgroundScheduler:
         """Start all periodic tasks."""
         self._running = True
         intervals = self._config.update_intervals
+
+        # Load cached AI data from disk before scheduling tasks
+        for name, ctx in self._manager.students.items():
+            cached = ctx.ai_storage.load_all()
+            for key, (data, prompt_hash) in cached.items():
+                if key.startswith("summary:"):
+                    week_type = key.split(":")[1]
+                    setattr(ctx, f"summary_{week_type}", data)
+                    if prompt_hash:
+                        self._last_prompts[f"summary:{ctx.name}:{week_type}"] = prompt_hash
+                elif key.startswith("prepare:"):
+                    period = key.split(":")[1]
+                    setattr(ctx, f"prepare_{period}", data)
+                    if prompt_hash:
+                        self._last_prompts[f"prepare:{ctx.name}:{period}"] = prompt_hash
+            if cached:
+                _LOGGER.info("Loaded %d cached AI results for %s", len(cached), name)
 
         for name, ctx in self._manager.students.items():
             self._schedule_task(f"timetable:{name}", intervals.timetable, self._refresh_timetable, ctx)
@@ -260,8 +278,9 @@ class BackgroundScheduler:
 
             cache_key = f"summary:{ctx.name}:{week_type}"
             prompt_fingerprint = prompt + "\0" + (prompts.summary_system or "")
+            prompt_hash = hashlib.sha256(prompt_fingerprint.encode()).hexdigest()
 
-            if self._last_prompts.get(cache_key) == prompt_fingerprint:
+            if self._last_prompts.get(cache_key) == prompt_hash:
                 _LOGGER.debug(
                     "Skipping summary %s for %s (prompt unchanged)", week_type, ctx.name,
                 )
@@ -271,7 +290,7 @@ class BackgroundScheduler:
                 prompt=prompt,
                 system_instruction=prompts.summary_system,
             )
-            self._last_prompts[cache_key] = prompt_fingerprint
+            self._last_prompts[cache_key] = prompt_hash
 
             summary = SummaryData(
                 student_name=ctx.name,
@@ -289,6 +308,8 @@ class BackgroundScheduler:
                 ctx.summary_current = summary
             else:
                 ctx.summary_next = summary
+
+            ctx.ai_storage.save_summary(summary, prompt_hash)
 
         ctx.summary_updated = datetime.now()
         _LOGGER.info("Refreshed summaries for %s", ctx.name)
@@ -330,8 +351,9 @@ class BackgroundScheduler:
 
             cache_key = f"prepare:{ctx.name}:{period}"
             prompt_fingerprint = prompt + "\0" + (prompts.prepare_system or "")
+            prompt_hash = hashlib.sha256(prompt_fingerprint.encode()).hexdigest()
 
-            if self._last_prompts.get(cache_key) == prompt_fingerprint:
+            if self._last_prompts.get(cache_key) == prompt_hash:
                 _LOGGER.debug(
                     "Skipping prepare %s for %s (prompt unchanged)", period, ctx.name,
                 )
@@ -341,7 +363,7 @@ class BackgroundScheduler:
                 prompt=prompt,
                 system_instruction=prompts.prepare_system,
             )
-            self._last_prompts[cache_key] = prompt_fingerprint
+            self._last_prompts[cache_key] = prompt_hash
 
             _, lessons_count = ctx.prepare_module.format_lessons(ctx.timetable, target_date)
 
@@ -358,6 +380,8 @@ class BackgroundScheduler:
                 ctx.prepare_today = prep
             else:
                 ctx.prepare_tomorrow = prep
+
+            ctx.ai_storage.save_prepare(prep, prompt_hash)
 
         ctx.prepare_updated = datetime.now()
         _LOGGER.info("Refreshed preparation for %s", ctx.name)

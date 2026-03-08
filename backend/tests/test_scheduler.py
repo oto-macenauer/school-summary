@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 from datetime import date, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from app.models.config import AppConfig, UpdateIntervalsConfig
+from app.modules.prepare import PrepareData
+from app.modules.summary import SummaryData
 from app.services.scheduler import BackgroundScheduler, TaskStatus
 from app.services.student_manager import StudentContext
 
@@ -32,6 +35,10 @@ def mock_student_context() -> MagicMock:
     ctx.prepare_module = MagicMock()
     ctx.komens_storage = MagicMock()
     ctx.gdrive_storage = MagicMock()
+    ctx.ai_storage = MagicMock()
+    ctx.ai_storage.load_all.return_value = {}
+    ctx.ai_storage.save_summary = MagicMock()
+    ctx.ai_storage.save_prepare = MagicMock()
     ctx.gdrive_client = None
     ctx.timetable_updated = None
     ctx.marks_updated = None
@@ -507,3 +514,128 @@ class TestSchedulerLifecycle:
         assert status.student == "TestStudent"
         assert scheduler.get_task_status("nonexistent") is None
         await scheduler.stop()
+
+
+# ---------------------------------------------------------------------------
+# AI cache persistence tests
+# ---------------------------------------------------------------------------
+
+class TestAICachePersistence:
+    """Tests for loading cached AI data on start and saving after generation."""
+
+    @pytest.mark.asyncio
+    async def test_start_loads_cached_ai_data(self, scheduler, mock_student_context):
+        """start() should load cached summaries/preparations into contexts and _last_prompts."""
+        summary = SummaryData(
+            student_name="TestStudent",
+            week_start=date(2026, 3, 2),
+            week_end=date(2026, 3, 8),
+            summary_text="Cached summary",
+            messages_count=3,
+            marks_count=1,
+            week_type="current",
+            generated_at=datetime(2026, 3, 8, 14, 0, 0),
+        )
+        prepare = PrepareData(
+            student_name="TestStudent",
+            target_date=date(2026, 3, 9),
+            preparation_text="Cached prep",
+            lessons_count=5,
+            messages_count=2,
+            period="today",
+            generated_at=datetime(2026, 3, 8, 14, 0, 0),
+        )
+        mock_student_context.ai_storage.load_all.return_value = {
+            "summary:current": (summary, "shash123"),
+            "prepare:today": (prepare, "phash456"),
+        }
+
+        await scheduler.start()
+
+        # Verify data was set on context
+        assert mock_student_context.summary_current == summary
+        assert mock_student_context.prepare_today == prepare
+
+        # Verify _last_prompts were seeded
+        assert scheduler._last_prompts["summary:TestStudent:current"] == "shash123"
+        assert scheduler._last_prompts["prepare:TestStudent:today"] == "phash456"
+
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_start_handles_empty_cache(self, scheduler, mock_student_context):
+        """start() should work fine when no cached data exists."""
+        mock_student_context.ai_storage.load_all.return_value = {}
+
+        await scheduler.start()
+
+        assert "summary:TestStudent:current" not in scheduler._last_prompts
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_refresh_summary_saves_to_ai_storage(self, scheduler, mock_student_context):
+        """_refresh_summary should call ai_storage.save_summary after Gemini call."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+        mock_student_context.marks = MagicMock()
+        mock_student_context.gdrive_client = None
+
+        mock_student_context.summary_module.get_week_messages.return_value = []
+        mock_student_context.summary_module.extract_new_marks.return_value = []
+        mock_student_context.summary_module.build_prompt_from_template.return_value = "test prompt"
+
+        scheduler._manager.gemini.generate_content = AsyncMock(return_value="generated summary")
+
+        await scheduler._refresh_summary(mock_student_context)
+
+        # Should have been called 3 times (last, current, next)
+        assert mock_student_context.ai_storage.save_summary.call_count == 3
+
+        # Verify the hash is a SHA256 digest
+        call_args = mock_student_context.ai_storage.save_summary.call_args_list[0]
+        saved_hash = call_args[0][1]  # second positional arg is prompt_hash
+        assert len(saved_hash) == 64  # SHA256 hex digest length
+
+    @pytest.mark.asyncio
+    async def test_refresh_prepare_saves_to_ai_storage(self, scheduler, mock_student_context):
+        """_refresh_prepare should call ai_storage.save_prepare after Gemini call."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+
+        mock_student_context.prepare_module.get_relevant_messages.return_value = []
+        mock_student_context.prepare_module.build_prompt_from_template.return_value = "test prompt"
+        mock_student_context.prepare_module.format_lessons.return_value = ("", 0)
+
+        scheduler._manager.gemini.generate_content = AsyncMock(return_value="generated prep")
+
+        await scheduler._refresh_prepare(mock_student_context)
+
+        # Should have been called 2 times (today, tomorrow)
+        assert mock_student_context.ai_storage.save_prepare.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_summary_uses_hash_for_dedup(self, scheduler, mock_student_context):
+        """Dedup should use SHA256 hash, not raw prompt fingerprint."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock()
+        mock_student_context.marks = MagicMock()
+        mock_student_context.gdrive_client = None
+
+        mock_student_context.summary_module.get_week_messages.return_value = []
+        mock_student_context.summary_module.extract_new_marks.return_value = []
+        mock_student_context.summary_module.build_prompt_from_template.return_value = "prompt"
+
+        gemini_mock = AsyncMock(return_value="text")
+        scheduler._manager.gemini.generate_content = gemini_mock
+
+        await scheduler._refresh_summary(mock_student_context)
+
+        # Verify stored values are SHA256 hashes (64 hex chars), not raw prompts
+        for key, value in scheduler._last_prompts.items():
+            if key.startswith("summary:"):
+                assert len(value) == 64
+                # Should match expected hash
+                expected = hashlib.sha256(
+                    ("prompt" + "\0" + "").encode()
+                ).hexdigest()
+                assert value == expected

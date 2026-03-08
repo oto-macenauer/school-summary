@@ -21,6 +21,7 @@ from ..modules.marks import MarksData, MarksModule
 from ..modules.prepare import PrepareData, PrepareModule, get_next_school_day, get_tomorrow
 from ..modules.summary import SummaryData, SummaryModule
 from ..modules.timetable import TimetableModule, WeekTimetable
+from ..storage.ai_storage import AIStorage
 from ..storage.gdrive_storage import GDriveStorage
 from ..storage.komens_storage import KomensStorage
 from ..storage.mail_storage import MailStorage
@@ -42,6 +43,7 @@ class StudentContext:
     komens_storage: KomensStorage
     gdrive_storage: GDriveStorage
     mail_storage: MailStorage
+    ai_storage: AIStorage
     gdrive_client: GoogleDriveClient | None = None
     mail_folder_id: str = ""
     student_info: str = ""
@@ -191,6 +193,7 @@ class StudentManager:
             _LOGGER.info("Google Drive client initialized for %s (folder: %s)", cfg.name, folder_id)
 
         komens_path = komens_storage.storage_path
+        ai_storage = AIStorage(cfg.name)
 
         ctx = StudentContext(
             name=cfg.name,
@@ -203,6 +206,7 @@ class StudentManager:
             komens_storage=komens_storage,
             gdrive_storage=gdrive_storage,
             mail_storage=mail_storage,
+            ai_storage=ai_storage,
             gdrive_client=gdrive_client,
             mail_folder_id=cfg.mail_folder_id,
             student_info=cfg.student_info,
