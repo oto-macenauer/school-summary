@@ -260,6 +260,23 @@ class TestKomensStorage:
         # Filename should be valid (no special chars)
         assert ":" not in path.name or path.name.count(":") == 0
 
+    def test_get_untagged_files(
+        self, storage: KomensStorage, sample_message: Message,
+    ) -> None:
+        """Test getting list of untagged files."""
+        storage.save_message(sample_message)
+        untagged = storage.get_untagged_files()
+        assert len(untagged) == 1
+
+        # After adding tagged_at to the file, it should not appear
+        path = untagged[0]
+        content = path.read_text(encoding="utf-8")
+        content = content.replace("---\n\n", "tagged_at: 2026-03-08T12:00:00\n---\n\n", 1)
+        path.write_text(content, encoding="utf-8")
+
+        untagged = storage.get_untagged_files()
+        assert len(untagged) == 0
+
     def test_message_without_date(self, storage: KomensStorage) -> None:
         """Test saving message without date."""
         msg = Message(

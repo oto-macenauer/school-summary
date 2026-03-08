@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import admin, auth, canteen, dashboard, gdrive, komens, mail, marks, prepare, prompt, summary, timetable
+from .api import admin, auth, canteen, dashboard, gdrive, komens, mail, marks, prepare, prompt, resources, summary, timetable
 from .config import generate_default_config, load_config
 from .dependencies import set_scheduler, set_student_manager
 from .services.log_manager import setup_logging
@@ -84,6 +84,7 @@ app.include_router(prepare.router)
 app.include_router(gdrive.router)
 app.include_router(prompt.router)
 app.include_router(canteen.router)
+app.include_router(resources.router)
 app.include_router(dashboard.router)
 app.include_router(admin.router)
 

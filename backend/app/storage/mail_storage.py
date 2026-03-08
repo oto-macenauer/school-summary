@@ -118,6 +118,15 @@ class MailStorage:
 
         return MailData(messages=messages)
 
+    def get_untagged_files(self) -> list[Path]:
+        """Return saved files that have not been tagged yet."""
+        if not self._student_path.exists():
+            return []
+        return [
+            f for f in self._student_path.glob("*.md")
+            if "tagged_at:" not in f.read_text(encoding="utf-8")
+        ]
+
     def get_statistics(self) -> dict[str, Any]:
         files = list(self._student_path.glob("*.md")) if self._student_path.exists() else []
         total_size = sum(f.stat().st_size for f in files)

@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from ..storage.tag_storage import TagStorage
 from .timetable import WeekTimetable
 
 _LOGGER = logging.getLogger("bakalari.prepare")
@@ -90,6 +91,25 @@ class PrepareModule:
                 message_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             except ValueError:
                 pass
+
+        # Use temporal tags if available for more accurate filtering
+        tags = TagStorage.read_tags(file_path)
+        if tags and tags.temporal:
+            today = date.today()
+            relevant = any(
+                t.date_from <= today + timedelta(days=2)
+                and (t.date_to or t.date_from) >= today - timedelta(days=1)
+                for t in tags.temporal
+            )
+            if relevant:
+                text_content = self._extract_text_content(content)
+                return {
+                    "title": title, "sender": sender, "date": message_date,
+                    "content": text_content[:1500] if text_content else "",
+                }
+            # Has tags but not temporally relevant — still fall through to date-based check
+
+        # Fallback: filter by cutoff date (for untagged messages)
         if message_date and message_date.date() < cutoff_date:
             return None
         text_content = self._extract_text_content(content)

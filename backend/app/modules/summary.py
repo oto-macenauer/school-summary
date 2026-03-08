@@ -9,6 +9,7 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from ..storage.tag_storage import TagStorage
 from .marks import MarksData
 from .timetable import WeekTimetable
 
@@ -132,6 +133,23 @@ class SummaryModule:
                 message_date = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
             except ValueError:
                 pass
+
+        # Use temporal tags if available for more accurate filtering
+        tags = TagStorage.read_tags(file_path)
+        if tags and tags.temporal:
+            overlaps = any(
+                t.date_from <= week_end and (t.date_to or t.date_from) >= week_start
+                for t in tags.temporal
+            )
+            if overlaps:
+                text_preview = self._extract_text_content(content)
+                return MessageSummary(
+                    title=title, sender=sender, date=message_date,
+                    text_preview=text_preview[:300] if text_preview else "",
+                )
+            return None
+
+        # Fallback: filter by sent date (for untagged messages)
         if message_date:
             msg_date = message_date.date()
             if msg_date < week_start or msg_date > week_end:

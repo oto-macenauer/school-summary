@@ -18,6 +18,8 @@ from ..modules.summary import (
 )
 from ..modules.mail_sync import sync_mail_from_gdrive
 from ..modules.prepare import PrepareData, get_tomorrow
+from ..modules.tagging import TaggableMessage, TaggingModule
+from ..storage.tag_storage import TagStorage
 from .log_manager import LogCategory, get_log_manager
 from .student_manager import StudentContext, StudentManager
 
@@ -87,6 +89,8 @@ class BackgroundScheduler:
                 self._schedule_task(f"gdrive:{name}", intervals.gdrive, self._refresh_gdrive, ctx)
             if ctx.gdrive_client and ctx.mail_folder_id:
                 self._schedule_task(f"mail:{name}", intervals.mail, self._refresh_mail, ctx)
+            if self._manager.gemini:
+                self._schedule_task(f"tagging:{name}", intervals.tagging, self._refresh_tags, ctx)
 
         # Canteen is school-wide, schedule once (not per-student)
         if self._manager.canteen_module:
@@ -409,6 +413,95 @@ class BackgroundScheduler:
             return
         await sync_mail_from_gdrive(gdrive, ctx.mail_folder_id, ctx.mail_storage)
         _LOGGER.debug("Refreshed mail for %s", ctx.name)
+
+    async def _refresh_tags(self, ctx: StudentContext) -> None:
+        """Tag untagged messages from all storage sources using Gemini."""
+        gemini = self._manager.gemini
+        if not gemini:
+            return
+
+        tagger = TaggingModule(gemini)
+
+        # Collect untagged files from all sources
+        untagged: list[tuple[Path, str]] = []
+        for path in ctx.komens_storage.get_untagged_files():
+            untagged.append((path, "komens"))
+        for path in ctx.mail_storage.get_untagged_files():
+            untagged.append((path, "mail"))
+        for path in ctx.gdrive_storage.get_untagged_files():
+            untagged.append((path, "report"))
+
+        if not untagged:
+            return
+
+        taggable: list[TaggableMessage] = []
+        path_map: dict[str, Path] = {}
+
+        for path, source_type in untagged:
+            msg = self._parse_taggable_from_file(path, source_type)
+            if msg:
+                taggable.append(msg)
+                path_map[msg.message_id] = path
+
+        if not taggable:
+            return
+
+        results = await tagger.tag_messages(taggable)
+
+        written = 0
+        for msg_id, tags in results.items():
+            path = path_map.get(msg_id)
+            if path:
+                TagStorage.write_tags(path, tags)
+                written += 1
+
+        if written:
+            _LOGGER.info("Tagged %d messages for %s", written, ctx.name)
+
+    @staticmethod
+    def _parse_taggable_from_file(
+        path: Path, source_type: str,
+    ) -> TaggableMessage | None:
+        """Parse a markdown file into a TaggableMessage."""
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError:
+            return None
+
+        fm = TagStorage.parse_frontmatter(content)
+
+        # Extract ID
+        msg_id = (
+            fm.get("message_id")
+            or fm.get("file_id")
+            or fm.get("week_number")
+            or path.stem
+        )
+
+        # Extract title
+        title = fm.get("title") or fm.get("subject") or path.stem
+
+        # Extract date
+        sent_date: date | None = None
+        date_str = fm.get("date") or fm.get("fetched_at") or ""
+        if date_str:
+            try:
+                dt = datetime.fromisoformat(date_str.replace("Z", "+00:00"))
+                sent_date = dt.date()
+            except ValueError:
+                pass
+
+        # Extract body (content after frontmatter)
+        parts = content.split("---", 2)
+        body = parts[2].strip() if len(parts) >= 3 else content.strip()
+
+        return TaggableMessage(
+            message_id=msg_id,
+            title=title,
+            body=body,
+            sent_date=sent_date,
+            source_type=source_type,
+        )
 
     def _schedule_canteen_task(self, interval: int) -> None:
         task_key = "canteen:global"

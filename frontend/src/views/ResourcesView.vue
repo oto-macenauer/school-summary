@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { marked } from 'marked'
 import { useStudentStore } from '@/stores/student'
-import { getKomens, getMail, getGDriveReports } from '@/api/client'
+import { getResources } from '@/api/client'
 import type { ResourceItem, ResourceCategory } from '@/types'
 
 const store = useStudentStore()
@@ -11,6 +11,9 @@ const loading = ref(false)
 const expanded = ref<Set<string>>(new Set())
 const search = ref('')
 const activeCategory = ref<ResourceCategory | 'all'>('all')
+const activeImportance = ref<string | null>(null)
+const activeSubject = ref<string | null>(null)
+const availableTags = ref<{ subjects: string[]; importance: string[] }>({ subjects: [], importance: [] })
 
 const categories: { key: ResourceCategory | 'all'; label: string }[] = [
   { key: 'all', label: 'Vše' },
@@ -25,75 +28,34 @@ const categoryLabels: Record<ResourceCategory, string> = {
   report: 'Report',
 }
 
-function weekStartDate(weekNumber: number, schoolYear: string): string {
-  // school_year is "2025/2026" — extract start year, derive Sep 1
-  const startYear = parseInt(schoolYear.split('/')[0], 10)
-  if (isNaN(startYear)) return new Date().toISOString()
-  const sep1 = new Date(startYear, 8, 1) // months are 0-indexed
-  // Monday of the week containing Sep 1 (same logic as backend)
-  const day = sep1.getDay()
-  const mondayOffset = day === 0 ? -6 : 1 - day
-  const startMonday = new Date(sep1)
-  startMonday.setDate(sep1.getDate() + mondayOffset)
-  // Week N starts at startMonday + (N-1)*7
-  const weekStart = new Date(startMonday)
-  weekStart.setDate(startMonday.getDate() + (weekNumber - 1) * 7)
-  return weekStart.toISOString()
+const tagLabels: Record<string, string> = {
+  test: 'Test',
+  homework: 'Úkol',
+  trip: 'Výlet',
+  event: 'Akce',
+  absence: 'Absence',
+  schedule_change: 'Změna rozvrhu',
+  important: 'Důležité',
+  info: 'Info',
+}
+
+function tagLabel(tag: string): string {
+  return tagLabels[tag] || tag
 }
 
 async function load() {
   if (!store.current) return
   loading.value = true
-  const all: ResourceItem[] = []
 
-  const [komensResult, mailResult, reportsResult] = await Promise.allSettled([
-    getKomens(store.current),
-    getMail(store.current),
-    getGDriveReports(store.current),
-  ])
-
-  if (komensResult.status === 'fulfilled' && komensResult.value?.recent_messages) {
-    for (const m of komensResult.value.recent_messages) {
-      all.push({
-        id: `komens-${m.id}`,
-        category: 'komens',
-        title: m.title,
-        sender: m.sender,
-        date: m.date,
-        body: m.text,
-        isRead: m.is_read,
-      })
-    }
+  try {
+    const result = await getResources(store.current)
+    items.value = result.items
+    availableTags.value = result.available_tags
+  } catch {
+    items.value = []
+    availableTags.value = { subjects: [], importance: [] }
   }
 
-  if (mailResult.status === 'fulfilled' && mailResult.value?.messages) {
-    for (const m of mailResult.value.messages) {
-      all.push({
-        id: `mail-${m.id}`,
-        category: 'mail',
-        title: m.subject,
-        sender: m.sender,
-        date: m.date,
-        body: m.body,
-      })
-    }
-  }
-
-  if (reportsResult.status === 'fulfilled' && reportsResult.value?.reports) {
-    for (const r of reportsResult.value.reports) {
-      all.push({
-        id: `report-${r.week_number}`,
-        category: 'report',
-        title: r.source_file,
-        sender: r.school_year,
-        date: weekStartDate(r.week_number, r.school_year),
-        body: r.content,
-        isMarkdown: true,
-      })
-    }
-  }
-
-  items.value = all
   loading.value = false
 }
 
@@ -113,6 +75,12 @@ const filtered = computed(() => {
   let list = items.value
   if (activeCategory.value !== 'all') {
     list = list.filter(i => i.category === activeCategory.value)
+  }
+  if (activeImportance.value) {
+    list = list.filter(i => i.tags?.importance?.includes(activeImportance.value!))
+  }
+  if (activeSubject.value) {
+    list = list.filter(i => i.tags?.subjects?.includes(activeSubject.value!))
   }
   const q = search.value.toLowerCase().trim()
   if (q) {
@@ -176,6 +144,28 @@ watch(() => store.current, load)
           <span class="pill__count">{{ categoryCount(cat.key) }}</span>
         </button>
       </div>
+      <div v-if="availableTags.importance.length" class="pills">
+        <button
+          v-for="tag in availableTags.importance"
+          :key="tag"
+          class="pill glass-btn"
+          :class="{ 'pill--active': activeImportance === tag }"
+          @click="activeImportance = activeImportance === tag ? null : tag"
+        >
+          {{ tagLabel(tag) }}
+        </button>
+      </div>
+      <div v-if="availableTags.subjects.length" class="pills">
+        <button
+          v-for="subj in availableTags.subjects"
+          :key="subj"
+          class="pill glass-btn pill--subject"
+          :class="{ 'pill--active': activeSubject === subj }"
+          @click="activeSubject = activeSubject === subj ? null : subj"
+        >
+          {{ subj }}
+        </button>
+      </div>
       <div class="search-bar">
         <input
           v-model="search"
@@ -211,6 +201,32 @@ watch(() => store.current, load)
               </span>
             </div>
             <div v-if="item.sender" class="item__sender">{{ item.sender }}</div>
+            <div v-if="item.tags && (item.tags.importance.length || item.tags.subjects.length || item.tags.temporal.length)" class="item__tags">
+              <span
+                v-for="imp in item.tags.importance"
+                :key="imp"
+                class="tag-pill"
+                :class="`tag-pill--${imp}`"
+                @click.stop="activeImportance = activeImportance === imp ? null : imp"
+              >
+                {{ tagLabel(imp) }}
+              </span>
+              <span
+                v-for="subj in item.tags.subjects"
+                :key="subj"
+                class="tag-pill tag-pill--subject"
+                @click.stop="activeSubject = activeSubject === subj ? null : subj"
+              >
+                {{ subj }}
+              </span>
+              <span
+                v-for="temp in item.tags.temporal"
+                :key="temp.from"
+                class="tag-pill tag-pill--temporal"
+              >
+                {{ temp.label || temp.from }}
+              </span>
+            </div>
             <div
               v-if="item.isMarkdown"
               class="item__body markdown-body"
@@ -346,6 +362,28 @@ watch(() => store.current, load)
 .item__title--unread { font-weight: var(--font-weight-semibold); }
 .item__time { color: var(--text-muted); font-size: var(--font-size-sm); flex-shrink: 0; }
 .item__sender { color: var(--text-secondary); font-size: var(--font-size-sm); margin: var(--space-xs) 0 var(--space-sm); }
+
+.item__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+  margin: var(--space-xs) 0;
+}
+
+.tag-pill {
+  font-size: var(--font-size-xs);
+  padding: 1px var(--space-sm);
+  border-radius: 999px;
+  cursor: pointer;
+}
+.tag-pill--test { background: rgba(239, 68, 68, 0.2); color: rgb(252, 129, 129); }
+.tag-pill--homework { background: rgba(245, 158, 11, 0.2); color: rgb(252, 211, 77); }
+.tag-pill--trip, .tag-pill--event { background: rgba(99, 102, 241, 0.2); color: rgb(165, 167, 252); }
+.tag-pill--important { background: rgba(239, 68, 68, 0.25); color: rgb(252, 129, 129); font-weight: var(--font-weight-semibold); }
+.tag-pill--info { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
+.tag-pill--absence, .tag-pill--schedule_change { background: rgba(245, 158, 11, 0.15); color: rgb(252, 211, 77); }
+.tag-pill--subject { background: rgba(34, 197, 94, 0.2); color: rgb(110, 231, 183); }
+.tag-pill--temporal { background: rgba(99, 102, 241, 0.1); color: rgb(165, 167, 252); cursor: default; font-size: 0.65rem; }
 
 .item__body {
   font-size: var(--font-size-base);

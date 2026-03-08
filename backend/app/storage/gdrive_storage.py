@@ -92,6 +92,13 @@ class GDriveStorage:
             return []
         return sorted(self._student_path.glob("week_*.md"))
 
+    def get_untagged_files(self) -> list[Path]:
+        """Return report files that have not been tagged yet."""
+        return [
+            f for f in self.get_all_reports()
+            if "tagged_at:" not in f.read_text(encoding="utf-8")
+        ]
+
     def get_all_reports_data(self) -> list[dict[str, Any]]:
         """Get all reports with parsed metadata and content."""
         reports: list[dict[str, Any]] = []

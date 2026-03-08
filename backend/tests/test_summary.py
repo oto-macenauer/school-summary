@@ -2,18 +2,23 @@
 
 from __future__ import annotations
 
+import tempfile
 from datetime import date, datetime, timedelta
+from pathlib import Path
 
 import pytest
 
 from app.modules.summary import (
     SummaryData,
+    SummaryModule,
     MessageSummary,
     MarkSummary,
     get_current_week_range,
     get_last_week_range,
     get_next_week_range,
 )
+from app.modules.tagging import MessageTags, TemporalTag
+from app.storage.tag_storage import TagStorage
 
 
 class TestGetCurrentWeekRange:
@@ -180,3 +185,98 @@ class TestMarkSummary:
         )
         assert mark.is_new is False
         assert mark.date is None
+
+
+class TestSummaryModuleTemporalTags:
+    """Tests for temporal tag-based filtering in SummaryModule._parse_message_file."""
+
+    @pytest.fixture
+    def temp_dir(self) -> Path:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            yield Path(tmpdir)
+
+    @pytest.fixture
+    def summary_module(self, temp_dir: Path) -> SummaryModule:
+        return SummaryModule(temp_dir, "TestStudent")
+
+    def _create_message_file(
+        self, directory: Path, msg_id: str, title: str,
+        msg_date: str, body: str = "Test content",
+    ) -> Path:
+        path = directory / f"{msg_id}.md"
+        content = (
+            f"---\n"
+            f"message_id: {msg_id}\n"
+            f"title: {title}\n"
+            f"sender: Teacher\n"
+            f"date: {msg_date}\n"
+            f"---\n\n{body}\n"
+        )
+        path.write_text(content, encoding="utf-8")
+        return path
+
+    def test_tagged_message_overlapping_week(
+        self, temp_dir: Path, summary_module: SummaryModule,
+    ) -> None:
+        """Message with temporal tag overlapping the week should be included."""
+        # Message sent March 1, but about March 10 test
+        path = self._create_message_file(
+            temp_dir, "MSG001", "Test info", "2026-03-01T10:00:00",
+        )
+        tags = MessageTags(
+            temporal=[TemporalTag(date_from=date(2026, 3, 10))],
+            subjects=["Matematika"],
+            importance=["test"],
+            tagged_at=datetime(2026, 3, 8, 12, 0),
+        )
+        TagStorage.write_tags(path, tags)
+
+        # Week of March 9-15
+        result = summary_module._parse_message_file(
+            path, date(2026, 3, 9), date(2026, 3, 15),
+        )
+        assert result is not None
+        assert result.title == "Test info"
+
+    def test_tagged_message_not_overlapping(
+        self, temp_dir: Path, summary_module: SummaryModule,
+    ) -> None:
+        """Message with temporal tag NOT overlapping should be excluded."""
+        path = self._create_message_file(
+            temp_dir, "MSG002", "Old test", "2026-03-01T10:00:00",
+        )
+        tags = MessageTags(
+            temporal=[TemporalTag(date_from=date(2026, 3, 3))],
+            subjects=[],
+            importance=["test"],
+            tagged_at=datetime(2026, 3, 8, 12, 0),
+        )
+        TagStorage.write_tags(path, tags)
+
+        # Week of March 9-15 — tag date is March 3, no overlap
+        result = summary_module._parse_message_file(
+            path, date(2026, 3, 9), date(2026, 3, 15),
+        )
+        assert result is None
+
+    def test_untagged_message_falls_back_to_date(
+        self, temp_dir: Path, summary_module: SummaryModule,
+    ) -> None:
+        """Untagged message should use sent date for filtering (existing behavior)."""
+        # Message sent within the week
+        path = self._create_message_file(
+            temp_dir, "MSG003", "This week", "2026-03-10T10:00:00",
+        )
+        result = summary_module._parse_message_file(
+            path, date(2026, 3, 9), date(2026, 3, 15),
+        )
+        assert result is not None
+
+        # Message sent outside the week
+        path2 = self._create_message_file(
+            temp_dir, "MSG004", "Last week", "2026-03-01T10:00:00",
+        )
+        result2 = summary_module._parse_message_file(
+            path2, date(2026, 3, 9), date(2026, 3, 15),
+        )
+        assert result2 is None

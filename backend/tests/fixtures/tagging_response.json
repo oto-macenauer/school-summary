@@ -1,0 +1,23 @@
+{
+  "1": {
+    "temporal": [
+      {"from": "2026-03-10", "to": null, "label": "příští pondělí"}
+    ],
+    "subjects": ["Matematika"],
+    "importance": ["test"]
+  },
+  "2": {
+    "temporal": [
+      {"from": "2026-03-09", "to": "2026-03-13", "label": "příští týden"}
+    ],
+    "subjects": ["Český jazyk", "Fyzika"],
+    "importance": ["homework", "info"]
+  },
+  "3": {
+    "temporal": [
+      {"from": "2026-03-15", "to": "2026-03-15", "label": "výlet"}
+    ],
+    "subjects": [],
+    "importance": ["trip"]
+  }
+}

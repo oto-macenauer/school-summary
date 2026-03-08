@@ -139,6 +139,19 @@ export interface MailData {
   messages: MailMessage[]
 }
 
+export interface TemporalTag {
+  from: string
+  to: string | null
+  label: string
+}
+
+export interface MessageTags {
+  temporal: TemporalTag[]
+  subjects: string[]
+  importance: string[]
+  tagged_at: string | null
+}
+
 export type ResourceCategory = 'komens' | 'mail' | 'report'
 
 export interface ResourceItem {
@@ -150,6 +163,7 @@ export interface ResourceItem {
   body: string
   isRead?: boolean
   isMarkdown?: boolean
+  tags?: MessageTags
 }
 
 export interface CanteenAllergen {

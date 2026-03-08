@@ -120,6 +120,13 @@ class KomensStorage:
             return []
         return list(self._student_path.glob("*.md"))
 
+    def get_untagged_files(self) -> list[Path]:
+        """Return saved files that have not been tagged yet."""
+        return [
+            f for f in self.get_saved_files()
+            if "tagged_at:" not in f.read_text(encoding="utf-8")
+        ]
+
     def get_statistics(self) -> dict[str, Any]:
         files = self.get_saved_files()
         total_size = sum(f.stat().st_size for f in files)
