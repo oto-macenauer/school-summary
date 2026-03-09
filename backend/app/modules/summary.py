@@ -134,26 +134,21 @@ class SummaryModule:
             except ValueError:
                 pass
 
-        # Use temporal tags if available for more accurate filtering
+        # Only include messages with temporal tags that overlap the target week.
+        # Untagged messages are excluded — we cannot reliably assign them to a
+        # week based on sent date alone (a message sent Monday may concern next
+        # week).  They will appear once the tagging task processes them.
         tags = TagStorage.read_tags(file_path)
-        if tags and tags.temporal:
-            overlaps = any(
-                t.date_from <= week_end and (t.date_to or t.date_from) >= week_start
-                for t in tags.temporal
-            )
-            if overlaps:
-                text_preview = self._extract_text_content(content)
-                return MessageSummary(
-                    title=title, sender=sender, date=message_date,
-                    text_preview=text_preview[:300] if text_preview else "",
-                )
+        if not tags or not tags.temporal:
             return None
 
-        # Fallback: filter by sent date (for untagged messages)
-        if message_date:
-            msg_date = message_date.date()
-            if msg_date < week_start or msg_date > week_end:
-                return None
+        overlaps = any(
+            t.date_from <= week_end and (t.date_to or t.date_from) >= week_start
+            for t in tags.temporal
+        )
+        if not overlaps:
+            return None
+
         text_preview = self._extract_text_content(content)
         return MessageSummary(
             title=title, sender=sender, date=message_date,

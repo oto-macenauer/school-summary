@@ -59,6 +59,29 @@ async def get_task_detail(task_name: str):
     return {"tasks": matching}
 
 
+@router.post("/api/admin/scheduler/{task_key}/trigger")
+async def trigger_task(task_key: str):
+    """Trigger a scheduled task to run immediately."""
+    scheduler = get_scheduler()
+    if task_key not in scheduler.task_statuses:
+        return {"status": "error", "message": f"Task '{task_key}' not found"}
+    try:
+        await scheduler.trigger_task(task_key)
+        status = scheduler.get_task_status(task_key)
+        return {
+            "status": "ok",
+            "message": f"Task '{task_key}' completed",
+            "task": status.to_dict() if status else None,
+        }
+    except Exception as err:
+        status = scheduler.get_task_status(task_key)
+        return {
+            "status": "error",
+            "message": str(err),
+            "task": status.to_dict() if status else None,
+        }
+
+
 @router.get("/api/config")
 async def get_config():
     """Get current configuration with passwords masked."""

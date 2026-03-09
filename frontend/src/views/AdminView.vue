@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { getLogs, getSchedulerStatus, getConfig, getGeminiUsage, reloadConfig } from '@/api/client'
+import { ref, computed, onMounted } from 'vue'
+import { getLogs, getSchedulerStatus, getConfig, getGeminiUsage, reloadConfig, triggerTask } from '@/api/client'
 import type { LogEntry, TaskStatus } from '@/types'
 import GlassCard from '@/components/ui/GlassCard.vue'
 
@@ -12,10 +12,42 @@ const logCategory = ref('')
 const logLevel = ref('')
 const config = ref<any>(null)
 const gemini = ref<any>(null)
+const studentFilter = ref('')
+const triggeringTask = ref<string | null>(null)
+
+const studentNames = computed(() => {
+  const names = new Set(tasks.value.map(t => t.student))
+  return [...names].sort()
+})
+
+const filteredTasks = computed(() => {
+  if (!studentFilter.value) return tasks.value
+  return tasks.value.filter(t => t.student === studentFilter.value)
+})
+
+function taskKey(t: TaskStatus): string {
+  return `${t.task_name}:${t.student}`
+}
+
+function formatTime(iso: string | null): string {
+  if (!iso) return '–'
+  return new Date(iso).toLocaleTimeString('cs')
+}
 
 async function loadScheduler() {
   const data = await getSchedulerStatus()
   tasks.value = data.tasks
+}
+
+async function doTrigger(t: TaskStatus) {
+  const key = taskKey(t)
+  triggeringTask.value = key
+  try {
+    await triggerTask(key)
+    await loadScheduler()
+  } finally {
+    triggeringTask.value = null
+  }
 }
 
 async function loadLogs() {
@@ -63,8 +95,15 @@ const navItems = [
     <div class="admin__content">
       <!-- Scheduler -->
       <div v-if="tab === 'scheduler'" class="section">
+        <div class="scheduler-toolbar">
+          <select v-model="studentFilter" class="glass-btn">
+            <option value="">Všichni studenti</option>
+            <option v-for="s in studentNames" :key="s" :value="s">{{ s }}</option>
+          </select>
+          <button class="glass-btn" @click="loadScheduler">Obnovit</button>
+        </div>
         <div
-          v-for="t in tasks"
+          v-for="t in filteredTasks"
           :key="t.task_name + t.student"
           class="inner-card task-card"
         >
@@ -73,17 +112,25 @@ const navItems = [
               <strong>{{ t.task_name }}</strong>
               <span class="task-student">{{ t.student }}</span>
             </div>
-            <span class="badge" :class="{
-              'badge--success': t.last_status === 'success',
-              'badge--error': t.last_status === 'error',
-              'badge--warning': t.last_status === 'pending',
-            }">{{ t.last_status }}</span>
+            <div class="task-actions">
+              <button
+                class="glass-btn glass-btn--sm"
+                :disabled="triggeringTask === taskKey(t)"
+                @click="doTrigger(t)"
+              >{{ triggeringTask === taskKey(t) ? '...' : 'Run' }}</button>
+              <span class="badge" :class="{
+                'badge--success': t.last_status === 'success',
+                'badge--error': t.last_status === 'error',
+                'badge--warning': t.last_status === 'pending',
+              }">{{ t.last_status }}</span>
+            </div>
           </div>
           <div class="task-details">
             <span>Runs: {{ t.run_count }}</span>
             <span>Errors: {{ t.error_count }}</span>
-            <span>Last: {{ t.last_duration_ms ?? '–' }}ms</span>
-            <span>Next: {{ t.next_run ? new Date(t.next_run).toLocaleTimeString('cs') : '–' }}</span>
+            <span>Duration: {{ t.last_duration_ms ?? '–' }}ms</span>
+            <span>Last run: {{ formatTime(t.last_run) }}</span>
+            <span>Next run: {{ formatTime(t.next_run) }}</span>
           </div>
           <div v-if="t.last_error" class="task-error">{{ t.last_error }}</div>
         </div>
@@ -209,6 +256,11 @@ const navItems = [
 .section { display: flex; flex-direction: column; gap: var(--space-sm); }
 
 /* Scheduler */
+.scheduler-toolbar {
+  display: flex;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
 .task-card { margin-bottom: 0; }
 .task-header {
   display: flex;
@@ -217,9 +269,15 @@ const navItems = [
 }
 .task-name { font-size: var(--font-size-base); }
 .task-student { color: var(--text-muted); margin-left: var(--space-sm); font-size: var(--font-size-sm); }
+.task-actions { display: flex; align-items: center; gap: var(--space-sm); }
+.glass-btn--sm {
+  padding: var(--space-xs) var(--space-sm);
+  font-size: var(--font-size-xs);
+}
 .task-details {
   display: flex;
-  gap: var(--space-lg);
+  flex-wrap: wrap;
+  gap: var(--space-md) var(--space-lg);
   margin-top: var(--space-sm);
   padding-top: var(--space-sm);
   border-top: var(--border-subtle);

@@ -65,6 +65,7 @@ class BackgroundScheduler:
         self._config = config
         self._tasks: list[asyncio.Task] = []
         self._task_statuses: dict[str, TaskStatus] = {}
+        self._task_callables: dict[str, tuple[Callable[..., Coroutine], StudentContext | None]] = {}
         self._running = False
         self._last_prompts: dict[str, str] = {}
 
@@ -74,6 +75,56 @@ class BackgroundScheduler:
 
     def get_task_status(self, task_name: str) -> TaskStatus | None:
         return self._task_statuses.get(task_name)
+
+    def get_task_keys(self) -> list[str]:
+        """Return all registered task keys."""
+        return list(self._task_statuses.keys())
+
+    async def trigger_task(self, task_key: str) -> bool:
+        """Trigger a single task to run immediately. Returns True on success."""
+        if task_key not in self._task_callables:
+            return False
+
+        coro_fn, ctx = self._task_callables[task_key]
+        status = self._task_statuses.get(task_key)
+        log_mgr = get_log_manager()
+
+        start = time.monotonic()
+        if status:
+            status.last_run = datetime.now()
+
+        try:
+            if ctx is not None:
+                await coro_fn(ctx)
+            else:
+                await coro_fn()
+            elapsed = int((time.monotonic() - start) * 1000)
+            if status:
+                status.last_duration_ms = elapsed
+                status.last_status = "success"
+                status.last_error = None
+                status.run_count += 1
+                status.next_run = datetime.now() + timedelta(seconds=status.interval_seconds)
+            log_mgr.log(
+                LogCategory.SCHEDULER, "INFO",
+                f"Task {task_key} triggered manually, completed in {elapsed}ms",
+            )
+            return True
+        except Exception as err:
+            elapsed = int((time.monotonic() - start) * 1000)
+            if status:
+                status.last_duration_ms = elapsed
+                status.last_status = "error"
+                status.last_error = str(err)
+                status.run_count += 1
+                status.error_count += 1
+            _LOGGER.error("Manually triggered task %s failed: %s", task_key, err)
+            log_mgr.log(
+                LogCategory.SCHEDULER, "ERROR",
+                f"Task {task_key} triggered manually, failed: {err}",
+                details={"error": str(err)},
+            )
+            raise
 
     async def start(self) -> None:
         """Start all periodic tasks."""
@@ -130,6 +181,7 @@ class BackgroundScheduler:
             next_run=datetime.now(),
         )
         self._task_statuses[task_key] = status
+        self._task_callables[task_key] = (coro_fn, ctx)
         task = asyncio.create_task(self._run_periodic(task_key, interval, coro_fn, ctx))
         self._tasks.append(task)
 
@@ -557,6 +609,7 @@ class BackgroundScheduler:
             next_run=datetime.now(),
         )
         self._task_statuses[task_key] = status
+        self._task_callables[task_key] = (self._refresh_canteen_wrapper, None)
         task = asyncio.create_task(self._run_canteen_periodic(task_key, interval))
         self._tasks.append(task)
 
@@ -601,6 +654,10 @@ class BackgroundScheduler:
                 await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 return
+
+    async def _refresh_canteen_wrapper(self) -> None:
+        """No-arg wrapper so canteen can be triggered via trigger_task."""
+        await self._refresh_canteen()
 
     async def _refresh_canteen(self) -> None:
         module = self._manager.canteen_module

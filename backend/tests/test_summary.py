@@ -259,20 +259,20 @@ class TestSummaryModuleTemporalTags:
         )
         assert result is None
 
-    def test_untagged_message_falls_back_to_date(
+    def test_untagged_message_excluded(
         self, temp_dir: Path, summary_module: SummaryModule,
     ) -> None:
-        """Untagged message should use sent date for filtering (existing behavior)."""
-        # Message sent within the week
+        """Untagged messages are excluded — cannot reliably assign to a week."""
+        # Message sent within the week but not tagged
         path = self._create_message_file(
             temp_dir, "MSG003", "This week", "2026-03-10T10:00:00",
         )
         result = summary_module._parse_message_file(
             path, date(2026, 3, 9), date(2026, 3, 15),
         )
-        assert result is not None
+        assert result is None
 
-        # Message sent outside the week
+        # Message sent outside the week and not tagged
         path2 = self._create_message_file(
             temp_dir, "MSG004", "Last week", "2026-03-01T10:00:00",
         )
@@ -280,3 +280,40 @@ class TestSummaryModuleTemporalTags:
             path2, date(2026, 3, 9), date(2026, 3, 15),
         )
         assert result2 is None
+
+    def test_tagged_with_date_range_overlapping(
+        self, temp_dir: Path, summary_module: SummaryModule,
+    ) -> None:
+        """Message with a temporal date range spanning multiple weeks should appear in both."""
+        path = self._create_message_file(
+            temp_dir, "MSG005", "Multi-week event", "2026-03-01T10:00:00",
+        )
+        tags = MessageTags(
+            temporal=[TemporalTag(
+                date_from=date(2026, 3, 8),
+                date_to=date(2026, 3, 18),
+                label="project deadline",
+            )],
+            subjects=[],
+            importance=[],
+            tagged_at=datetime(2026, 3, 8, 12, 0),
+        )
+        TagStorage.write_tags(path, tags)
+
+        # Should appear in week March 9-15
+        result = summary_module._parse_message_file(
+            path, date(2026, 3, 9), date(2026, 3, 15),
+        )
+        assert result is not None
+
+        # Should also appear in week March 16-22
+        result2 = summary_module._parse_message_file(
+            path, date(2026, 3, 16), date(2026, 3, 22),
+        )
+        assert result2 is not None
+
+        # Should NOT appear in week March 23-29
+        result3 = summary_module._parse_message_file(
+            path, date(2026, 3, 23), date(2026, 3, 29),
+        )
+        assert result3 is None

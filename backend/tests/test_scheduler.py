@@ -639,3 +639,62 @@ class TestAICachePersistence:
                     ("prompt" + "\0" + "").encode()
                 ).hexdigest()
                 assert value == expected
+
+
+# ---------------------------------------------------------------------------
+# Trigger task tests
+# ---------------------------------------------------------------------------
+
+class TestTriggerTask:
+    """Tests for on-demand task triggering."""
+
+    @pytest.mark.asyncio
+    async def test_trigger_registered_task(self, scheduler, mock_student_context):
+        """Triggering a registered task should run it and update status."""
+        await scheduler.start()
+
+        mock_student_context.timetable_module.get_actual_timetable = AsyncMock(return_value=MagicMock())
+
+        result = await scheduler.trigger_task("timetable:TestStudent")
+        assert result is True
+
+        status = scheduler.get_task_status("timetable:TestStudent")
+        assert status.last_status == "success"
+        assert status.last_duration_ms is not None
+        assert status.run_count >= 1
+
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_trigger_unknown_task_returns_false(self, scheduler):
+        """Triggering an unknown task key should return False."""
+        result = await scheduler.trigger_task("nonexistent:nobody")
+        assert result is False
+
+    @pytest.mark.asyncio
+    async def test_trigger_failing_task_raises(self, scheduler, mock_student_context):
+        """Triggering a task that raises should propagate the error."""
+        await scheduler.start()
+
+        mock_student_context.timetable_module.get_actual_timetable = AsyncMock(
+            side_effect=RuntimeError("API down")
+        )
+
+        with pytest.raises(RuntimeError, match="API down"):
+            await scheduler.trigger_task("timetable:TestStudent")
+
+        status = scheduler.get_task_status("timetable:TestStudent")
+        assert status.last_status == "error"
+        assert "API down" in (status.last_error or "")
+
+        await scheduler.stop()
+
+    @pytest.mark.asyncio
+    async def test_get_task_keys(self, scheduler):
+        """get_task_keys should return all registered task keys."""
+        await scheduler.start()
+        keys = scheduler.get_task_keys()
+        assert "timetable:TestStudent" in keys
+        assert "summary:TestStudent" in keys
+        assert len(keys) == 5  # timetable, marks, komens, summary, prepare
+        await scheduler.stop()

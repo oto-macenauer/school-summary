@@ -94,3 +94,8 @@ export async function reloadConfig() {
   const { data } = await api.post('/config/reload')
   return data
 }
+
+export async function triggerTask(taskKey: string) {
+  const { data } = await api.post(`/admin/scheduler/${taskKey}/trigger`)
+  return data as { status: string; message: string; task: TaskStatus | null }
+}
