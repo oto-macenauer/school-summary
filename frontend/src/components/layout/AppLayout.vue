@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppHeader from './AppHeader.vue'
+import PWAUpdate from './PWAUpdate.vue'
 </script>
 
 <template>
@@ -8,6 +9,7 @@ import AppHeader from './AppHeader.vue'
     <main class="layout__main">
       <slot />
     </main>
+    <PWAUpdate />
   </div>
 </template>
 

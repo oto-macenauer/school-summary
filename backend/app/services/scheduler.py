@@ -22,6 +22,7 @@ from ..modules.prepare import PrepareData, get_tomorrow
 from ..modules.tagging import TaggableMessage, TaggingModule
 from ..storage.tag_storage import TagStorage
 from .log_manager import LogCategory, get_log_manager
+from .push_service import PushService
 from .student_manager import StudentContext, StudentManager
 
 _LOGGER = logging.getLogger("bakalari.scheduler")
@@ -60,14 +61,21 @@ class TaskStatus:
 class BackgroundScheduler:
     """Schedules periodic data refresh for all students."""
 
-    def __init__(self, manager: StudentManager, config: AppConfig) -> None:
+    def __init__(
+        self,
+        manager: StudentManager,
+        config: AppConfig,
+        push_service: PushService | None = None,
+    ) -> None:
         self._manager = manager
         self._config = config
+        self._push_service = push_service
         self._tasks: list[asyncio.Task] = []
         self._task_statuses: dict[str, TaskStatus] = {}
         self._task_callables: dict[str, tuple[Callable[..., Coroutine], StudentContext | None]] = {}
         self._running = False
         self._last_prompts: dict[str, str] = {}
+        self._known_mark_ids: dict[str, set[str]] = {}
 
     @property
     def task_statuses(self) -> dict[str, TaskStatus]:
@@ -241,9 +249,40 @@ class BackgroundScheduler:
         _LOGGER.debug("Refreshed timetable for %s", ctx.name)
 
     async def _refresh_marks(self, ctx: StudentContext) -> None:
-        ctx.marks = await ctx.marks_module.get_marks()
+        old_mark_ids = self._known_mark_ids.get(ctx.name, set())
+        new_data = await ctx.marks_module.get_marks()
+
+        # Collect all mark IDs from the new data
+        current_ids: set[str] = set()
+        new_marks_info: list[tuple[str, str]] = []  # (subject, mark_text)
+        for subject in new_data.subjects:
+            for mark in subject.marks:
+                current_ids.add(mark.mark_id)
+                if old_mark_ids and mark.mark_id not in old_mark_ids:
+                    new_marks_info.append((subject.subject_name, mark.mark_text))
+
+        self._known_mark_ids[ctx.name] = current_ids
+        ctx.marks = new_data
         ctx.marks_updated = datetime.now()
         _LOGGER.debug("Refreshed marks for %s", ctx.name)
+
+        # Send push notification for new marks
+        if new_marks_info and self._push_service:
+            if len(new_marks_info) == 1:
+                subj, grade = new_marks_info[0]
+                body = f"{subj}: {grade}"
+            else:
+                body = f"{len(new_marks_info)} nových známek"
+            slug = ctx.name.lower()
+            asyncio.create_task(
+                self._push_service.send_notification(
+                    student=ctx.name,
+                    title="Nová známka",
+                    body=body,
+                    url=f"/{slug}/marks",
+                    tag="marks",
+                )
+            )
 
     async def _refresh_komens(self, ctx: StudentContext) -> None:
         try:
@@ -365,6 +404,19 @@ class BackgroundScheduler:
 
         ctx.summary_updated = datetime.now()
         _LOGGER.info("Refreshed summaries for %s", ctx.name)
+
+        # Notify about summary update
+        if self._push_service:
+            slug = ctx.name.lower()
+            asyncio.create_task(
+                self._push_service.send_notification(
+                    student=ctx.name,
+                    title="Shrnutí aktualizováno",
+                    body="Týdenní shrnutí bylo aktualizováno",
+                    url=f"/{slug}",
+                    tag="summary",
+                )
+            )
 
     async def _refresh_prepare(self, ctx: StudentContext) -> None:
         gemini = self._manager.gemini

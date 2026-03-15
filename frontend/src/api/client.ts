@@ -99,3 +99,19 @@ export async function triggerTask(taskKey: string) {
   const { data } = await api.post(`/admin/scheduler/${taskKey}/trigger`)
   return data as { status: string; message: string; task: TaskStatus | null }
 }
+
+// Push notifications
+export async function getVapidKey(): Promise<{ public_key: string }> {
+  const { data } = await api.get('/notifications/vapid-key')
+  return data
+}
+
+export async function subscribePush(student: string, subscription: PushSubscriptionJSON) {
+  const { data } = await api.post('/notifications/subscribe', { student, subscription })
+  return data
+}
+
+export async function unsubscribePush(student: string, endpoint: string) {
+  const { data } = await api.post('/notifications/unsubscribe', { student, endpoint })
+  return data
+}

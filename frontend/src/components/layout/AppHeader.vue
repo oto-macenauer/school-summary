@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue'
 import { useStudentStore } from '@/stores/student'
 import { useRouter, useRoute } from 'vue-router'
+import NotificationBell from './NotificationBell.vue'
 
 const store = useStudentStore()
 const router = useRouter()
@@ -72,6 +73,7 @@ function closeMenu() {
           <option v-for="s in store.students" :key="s" :value="s">{{ s }}</option>
         </select>
         <span v-else-if="store.current" class="header__student">{{ store.current }}</span>
+        <NotificationBell />
         <RouterLink to="/admin" class="glass-btn" @click="closeMenu">Admin</RouterLink>
       </div>
     </nav>
@@ -86,6 +88,7 @@ function closeMenu() {
         <option v-for="s in store.students" :key="s" :value="s">{{ s }}</option>
       </select>
       <span v-else-if="store.current" class="header__student">{{ store.current }}</span>
+      <NotificationBell />
       <RouterLink to="/admin" class="glass-btn">Admin</RouterLink>
     </div>
   </header>

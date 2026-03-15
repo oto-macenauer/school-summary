@@ -8,10 +8,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import admin, auth, canteen, dashboard, gdrive, komens, mail, marks, prepare, prompt, resources, summary, timetable
+from .api import admin, auth, canteen, dashboard, gdrive, komens, mail, marks, notifications, prepare, prompt, resources, summary, timetable
 from .config import generate_default_config, load_config
-from .dependencies import set_scheduler, set_student_manager
+from .dependencies import set_push_service, set_scheduler, set_student_manager
 from .services.log_manager import setup_logging
+from .services.push_service import PushService
 from .services.scheduler import BackgroundScheduler
 from .services.student_manager import StudentManager
 
@@ -40,8 +41,13 @@ async def lifespan(app: FastAPI):
 
     set_student_manager(manager)
 
+    # Initialize push notification service
+    push_service = PushService()
+    push_service.initialize()
+    set_push_service(push_service)
+
     # Start scheduler
-    scheduler = BackgroundScheduler(manager, config)
+    scheduler = BackgroundScheduler(manager, config, push_service=push_service)
     set_scheduler(scheduler)
     await scheduler.start()
 
@@ -86,6 +92,7 @@ app.include_router(prompt.router)
 app.include_router(canteen.router)
 app.include_router(resources.router)
 app.include_router(dashboard.router)
+app.include_router(notifications.router)
 app.include_router(admin.router)
 
 
