@@ -337,16 +337,19 @@ watch(() => store.current, load)
   flex-direction: column;
   gap: var(--space-sm);
   padding-bottom: var(--space-xl);
+  min-width: 0;
 }
 
 .item {
   cursor: pointer;
   transition: border-color var(--transition);
+  overflow: hidden;
+  min-width: 0;
 }
 .item:hover { border-color: rgba(255, 255, 255, 0.12); }
 .item--unread { border-left: 2px solid var(--accent); }
 
-.item__header { display: flex; align-items: baseline; gap: var(--space-sm); }
+.item__header { display: flex; align-items: baseline; gap: var(--space-sm); min-width: 0; }
 .item__tag {
   font-size: var(--font-size-xs);
   padding: 1px var(--space-xs);
