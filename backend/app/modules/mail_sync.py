@@ -35,6 +35,12 @@ async def sync_mail_from_gdrive(
         return 0
 
     files = (await response.json()).get("files", [])
+    if not files:
+        _LOGGER.debug(
+            "No files found in mail folder %s — is the folder shared with the service account?",
+            mail_folder_id,
+        )
+        return 0
     synced = 0
 
     for file_info in files:
