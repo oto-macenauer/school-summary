@@ -31,6 +31,39 @@ class TestSanitizeFilename:
         assert _sanitize_filename("hello   world") == "hello world"
 
 
+class TestMailStorageFileListing:
+    """The scheduler lists stored files through these two methods."""
+
+    def test_get_saved_files_empty_without_directory(self, tmp_path) -> None:
+        from app.storage.mail_storage import MailStorage
+
+        assert MailStorage(tmp_path / "mail", "Alice").get_saved_files() == []
+
+    def test_get_saved_files_returns_stored_markdown(self, tmp_path) -> None:
+        from app.storage.mail_storage import MailStorage
+
+        storage = MailStorage(tmp_path / "mail", "Alice")
+        storage.ensure_directory()
+        (storage.storage_path / "b.md").write_text("---\nfile_id: b\n---\n", encoding="utf-8")
+        (storage.storage_path / "a.md").write_text("---\nfile_id: a\n---\n", encoding="utf-8")
+        (storage.storage_path / "note.txt").write_text("ignored", encoding="utf-8")
+
+        assert [f.name for f in storage.get_saved_files()] == ["a.md", "b.md"]
+
+    def test_untagged_is_a_subset_of_saved(self, tmp_path) -> None:
+        from app.storage.mail_storage import MailStorage
+
+        storage = MailStorage(tmp_path / "mail", "Alice")
+        storage.ensure_directory()
+        (storage.storage_path / "tagged.md").write_text(
+            "---\nfile_id: t\ntagged_at: 2026-09-20T10:00:00\n---\n", encoding="utf-8",
+        )
+        (storage.storage_path / "fresh.md").write_text("---\nfile_id: f\n---\n", encoding="utf-8")
+
+        assert len(storage.get_saved_files()) == 2
+        assert [f.name for f in storage.get_untagged_files()] == ["fresh.md"]
+
+
 class TestMailStorage:
     @pytest.fixture
     def temp_dir(self):

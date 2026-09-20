@@ -19,6 +19,9 @@ from app.modules.tagging import (
 from app.services import scheduler as scheduler_module
 from app.services.scheduler import BackgroundScheduler
 from app.storage.agenda_storage import AgendaStorage
+from app.storage.gdrive_storage import GDriveStorage
+from app.storage.komens_storage import KomensStorage
+from app.storage.mail_storage import MailStorage
 from app.storage.tag_storage import TagStorage
 
 RESPONSE = {
@@ -221,18 +224,25 @@ class TestSchemaVersioning:
 
 
 def _make_scheduler(tmp_path: Path, agenda_cfg: AgendaConfig | None = None):
-    """Scheduler wired to real storage in tmp_path and mocked outside world."""
-    komens_dir = tmp_path / "komens"
-    komens_dir.mkdir()
+    """Scheduler wired to the real storage classes in tmp_path.
+
+    Deliberately not stubs: the scheduler calls these by name, and a stub
+    happily answers a method the real class does not have.
+    """
+    komens_storage = KomensStorage(tmp_path / "komens", "Alice")
+    komens_storage.ensure_directory()
+    komens_dir = komens_storage.storage_path
+    mail_storage = MailStorage(tmp_path / "mail", "Alice")
+    mail_storage.ensure_directory()
+    gdrive_storage = GDriveStorage(tmp_path / "gdrive", "Alice")
+    gdrive_storage.ensure_directory()
     agenda_storage = AgendaStorage(tmp_path / "agenda", "Alice")
 
     ctx = SimpleNamespace(
         name="Alice",
-        komens_storage=SimpleNamespace(
-            get_saved_files=lambda: sorted(komens_dir.glob("*.md")),
-        ),
-        mail_storage=SimpleNamespace(get_saved_files=lambda: []),
-        gdrive_storage=SimpleNamespace(get_all_reports=lambda: []),
+        komens_storage=komens_storage,
+        mail_storage=mail_storage,
+        gdrive_storage=gdrive_storage,
         agenda_storage=agenda_storage,
     )
 
@@ -308,6 +318,25 @@ class TestRefreshTagsWritesAgenda:
         await scheduler._refresh_tags(ctx)
 
         assert storage.get_state(task_id).done is True
+
+    @pytest.mark.asyncio
+    async def test_all_three_sources_are_collected(self, tmp_path: Path) -> None:
+        """Komens, mail and reports each reach the AI through their own storage."""
+        scheduler, ctx, komens_dir, _, gemini, _ = _make_scheduler(tmp_path)
+        _write_message_file(komens_dir, "1234", date(2026, 10, 1), tagged=False)
+        _write_message_file(
+            ctx.mail_storage.storage_path, "mail-1", date(2026, 10, 1), tagged=False,
+        )
+        _write_message_file(
+            ctx.gdrive_storage.storage_path, "week_05", date(2026, 10, 1), tagged=False,
+        )
+
+        await scheduler._refresh_tags(ctx)
+
+        prompt = gemini.generate_content.await_args.kwargs["prompt"]
+        assert "1234" in prompt
+        assert "mail-1" in prompt
+        assert "week_05" in prompt
 
     @pytest.mark.asyncio
     async def test_no_gemini_is_a_no_op(self, tmp_path: Path) -> None:

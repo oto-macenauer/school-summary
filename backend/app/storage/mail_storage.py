@@ -118,12 +118,16 @@ class MailStorage:
 
         return MailData(messages=messages)
 
-    def get_untagged_files(self) -> list[Path]:
-        """Return saved files that have not been tagged yet."""
+    def get_saved_files(self) -> list[Path]:
+        """Return every stored mail file."""
         if not self._student_path.exists():
             return []
+        return sorted(self._student_path.glob("*.md"))
+
+    def get_untagged_files(self) -> list[Path]:
+        """Return saved files that have not been tagged yet."""
         return [
-            f for f in self._student_path.glob("*.md")
+            f for f in self.get_saved_files()
             if "tagged_at:" not in f.read_text(encoding="utf-8")
         ]
 
