@@ -79,7 +79,7 @@ def _resolve_timetable(params: list[str], ctx: StudentContext) -> str:
     if param == "next":
         return ctx.summary_module.format_timetable(ctx.timetable_next)
     if param == "notes":
-        # Themes recorded by teachers; default to the current week.
+        # Notes recorded by teachers; default to the current week.
         week = params[1].lower() if len(params) > 1 else "current"
         source = {
             "last": ctx.timetable_last,

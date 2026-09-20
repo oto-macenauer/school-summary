@@ -148,8 +148,8 @@ class PrepareModule:
                 line += f" v {lesson.room_abbrev}"
             if lesson.teacher_abbrev:
                 line += f" ({lesson.teacher_abbrev})"
-            if lesson.theme:
-                line += f" - téma: {lesson.theme}"
+            if lesson.note:
+                line += f" - téma: {lesson.note}"
             if lesson.is_changed and lesson.change_description:
                 line += f" [ZMĚNA: {lesson.change_description}]"
             lines.append(line)

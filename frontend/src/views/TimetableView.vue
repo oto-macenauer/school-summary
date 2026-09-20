@@ -110,12 +110,12 @@ const schoolDays = computed(() => {
   return timetable.value.days.filter((d: any) => d.is_school_day)
 })
 
-// Themes recorded by teachers — what was actually taught, per day
+// Notes recorded by teachers — what was actually taught, per day
 const noteDays = computed(() => {
   return schoolDays.value
     .map((day: any) => ({
       date: day.date,
-      notes: (day.lessons || []).filter((l: any) => l.theme && l.theme.trim()),
+      notes: (day.lessons || []).filter((l: any) => l.note && l.note.trim()),
     }))
     .filter((d: any) => d.notes.length > 0)
 })
@@ -177,10 +177,10 @@ watch(weekOffset, load)
                     <span v-if="getLessonAt(day, slot.begin).room" class="tt-room">{{ getLessonAt(day, slot.begin).room }}</span>
                     <span v-if="getLessonAt(day, slot.begin).is_changed" class="tt-change">{{ getLessonAt(day, slot.begin).change_description || 'Změna' }}</span>
                     <span
-                      v-if="getLessonAt(day, slot.begin).theme"
-                      class="tt-theme"
-                      :title="getLessonAt(day, slot.begin).theme"
-                    >{{ getLessonAt(day, slot.begin).theme }}</span>
+                      v-if="getLessonAt(day, slot.begin).note"
+                      class="tt-note"
+                      :title="getLessonAt(day, slot.begin).note"
+                    >{{ getLessonAt(day, slot.begin).note }}</span>
                   </div>
                 </template>
                 <template v-else-if="getExtraAt(day.date, slot.begin)">
@@ -202,7 +202,7 @@ watch(weekOffset, load)
         <ul class="notes-list">
           <li v-for="(lesson, i) in day.notes" :key="i" class="notes-item">
             <span class="notes-subject">{{ lesson.abbrev || lesson.name }}</span>
-            <span class="notes-text">{{ lesson.theme }}</span>
+            <span class="notes-text">{{ lesson.note }}</span>
           </li>
         </ul>
       </div>
@@ -287,7 +287,7 @@ watch(weekOffset, load)
 .tt-room { font-size: var(--font-size-xs); color: var(--text-secondary); display: block; }
 .tt-change { font-size: var(--font-size-xs); color: var(--warning); display: block; }
 
-.tt-theme {
+.tt-note {
   display: -webkit-box;
   -webkit-line-clamp: 3;
   line-clamp: 3;

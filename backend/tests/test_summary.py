@@ -320,30 +320,30 @@ class TestSummaryModuleTemporalTags:
         assert result3 is None
 
 
-def _lesson_with_theme(abbrev: str, name: str, theme: str | None) -> Lesson:
+def _lesson_with_note(abbrev: str, name: str, note: str | None) -> Lesson:
     return Lesson(
         subject_id="s1", subject_name=name, subject_abbrev=abbrev,
         teacher_id=None, teacher_name=None, teacher_abbrev=None,
         room_id=None, room_name=None, room_abbrev=None,
         hour_id="1", begin_time="08:00", end_time="08:45",
-        theme=theme, group_abbrev=None,
+        note=note, group_abbrev=None,
         change_description=None, is_changed=False,
     )
 
 
 def _week_with_notes() -> WeekTimetable:
-    """Monday with two recorded themes, Tuesday with none, Wednesday a holiday."""
+    """Monday with two recorded notes, Tuesday with none, Wednesday a holiday."""
     return WeekTimetable(days=[
         TimetableDay(
             date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
             lessons=[
-                _lesson_with_theme("M", "Matematika", "Sčítání do 100"),
-                _lesson_with_theme("ČJ", "Čeština", "Vyjmenovaná slova"),
+                _lesson_with_note("M", "Matematika", "Sčítání do 100"),
+                _lesson_with_note("ČJ", "Čeština", "Vyjmenovaná slova"),
             ],
         ),
         TimetableDay(
             date=date(2026, 9, 22), day_type=DayType.WORK_DAY, day_description=None,
-            lessons=[_lesson_with_theme("AJ", "Angličtina", None)],
+            lessons=[_lesson_with_note("AJ", "Angličtina", None)],
         ),
         TimetableDay(
             date=date(2026, 9, 23), day_type=DayType.HOLIDAY,
@@ -353,10 +353,10 @@ def _week_with_notes() -> WeekTimetable:
 
 
 class TestFormatTimetableNotes:
-    """Tests for lesson themes in the formatted timetable."""
+    """Tests for lesson notes in the formatted timetable."""
 
     def test_notes_included_by_default(self):
-        """Test that recorded themes are listed under their day."""
+        """Test that recorded notes are listed under their day."""
         module = SummaryModule(None, "Test")
         text = module.format_timetable(_week_with_notes())
 
@@ -365,7 +365,7 @@ class TestFormatTimetableNotes:
         assert "· probráno – ČJ: Vyjmenovaná slova" in text
 
     def test_notes_can_be_disabled(self):
-        """Test that themes can be left out."""
+        """Test that notes can be left out."""
         module = SummaryModule(None, "Test")
         text = module.format_timetable(_week_with_notes(), include_notes=False)
 
@@ -387,16 +387,16 @@ class TestFormatTimetableNotes:
         assert "- Pondělí (21.09.):" in text
         assert "· M: Sčítání do 100" in text
         assert "· ČJ: Vyjmenovaná slova" in text
-        # Days without themes are skipped
+        # Days without notes are skipped
         assert "Úterý" not in text
 
     def test_format_lesson_notes_empty(self):
-        """Test the notes block when no theme was recorded."""
+        """Test the notes block when no note was recorded."""
         module = SummaryModule(None, "Test")
         week = WeekTimetable(days=[
             TimetableDay(
                 date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
-                lessons=[_lesson_with_theme("M", "Matematika", None)],
+                lessons=[_lesson_with_note("M", "Matematika", None)],
             ),
         ])
         assert module.format_lesson_notes(week) == "Učitelé zatím nezapsali probranou látku."

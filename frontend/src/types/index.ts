@@ -42,7 +42,7 @@ export interface Lesson {
   end_time: string
   teacher: string | null
   room: string | null
-  theme: string | null
+  note: string | null
   is_changed: boolean
   change_description: string | null
 }

@@ -218,7 +218,7 @@ Old content.
             hour_id="h1",
             begin_time="08:00",
             end_time="08:45",
-            theme="Algebra",
+            note="Algebra",
             group_abbrev=None,
             change_description=None,
             is_changed=False,

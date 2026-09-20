@@ -45,6 +45,19 @@ class DayType(Enum):
         return cls.UNDEFINED
 
 
+def _lesson_note(atom: dict[str, Any]) -> str | None:
+    """Get the note the teacher recorded for a lesson.
+
+    Schools fill either ``Notice`` (what Bakalari shows in the lesson detail)
+    or the older ``Theme`` field, so prefer the former and fall back.
+    """
+    for key in ("Notice", "Theme"):
+        value = atom.get(key)
+        if value and value.strip():
+            return value
+    return None
+
+
 @dataclass
 class Lesson:
     """Represents a single lesson in the timetable."""
@@ -61,7 +74,7 @@ class Lesson:
     hour_id: str
     begin_time: str
     end_time: str
-    theme: str | None
+    note: str | None
     group_abbrev: str | None
     change_description: str | None
     is_changed: bool
@@ -105,7 +118,7 @@ class Lesson:
             hour_id=hour_id,
             begin_time=hour.get("BeginTime", ""),
             end_time=hour.get("EndTime", ""),
-            theme=atom.get("Theme"),
+            note=_lesson_note(atom),
             group_abbrev=atom.get("GroupAbvrev"),
             change_description=change_description,
             is_changed=is_changed,
@@ -138,19 +151,19 @@ class TimetableDay:
 
     @property
     def notes(self) -> list[tuple[str, str]]:
-        """Get ``(subject, theme)`` pairs for lessons that have a theme.
+        """Get ``(subject, note)`` pairs for lessons the teacher annotated.
 
-        The theme is what the teacher recorded as taught in that lesson.
+        The note is what the teacher recorded as taught in that lesson.
         """
         return [
-            (lesson.subject_abbrev or lesson.subject_name, lesson.theme.strip())
+            (lesson.subject_abbrev or lesson.subject_name, lesson.note.strip())
             for lesson in self.lessons
-            if lesson.theme and lesson.theme.strip()
+            if lesson.note and lesson.note.strip()
         ]
 
     @property
     def has_notes(self) -> bool:
-        """Check if any lesson of this day has a recorded theme."""
+        """Check if any lesson of this day has a recorded note."""
         return bool(self.notes)
 
     def to_detailed_dict(self) -> dict[str, Any]:
@@ -169,7 +182,7 @@ class TimetableDay:
                     "end_time": lesson.end_time,
                     "teacher": lesson.teacher_name,
                     "room": lesson.room_abbrev,
-                    "theme": lesson.theme,
+                    "note": lesson.note,
                     "group": lesson.group_abbrev,
                     "is_changed": lesson.is_changed,
                     "change_description": lesson.change_description,
@@ -215,7 +228,7 @@ class WeekTimetable:
 
     @property
     def has_notes(self) -> bool:
-        """Check if any day of the week has recorded lesson themes."""
+        """Check if any day of the week has recorded lesson notes."""
         return any(day.has_notes for day in self.days)
 
     @property

@@ -247,7 +247,7 @@ class BackgroundScheduler:
     async def _refresh_timetable(self, ctx: StudentContext) -> None:
         """Refresh last, current and next week timetables.
 
-        Past weeks carry the themes teachers recorded (what was taught), which
+        Past weeks carry the notes teachers recorded (what was taught), which
         feed the weekly summaries, so they are fetched alongside the current one.
         """
         ctx.timetable = await ctx.timetable_module.get_actual_timetable()

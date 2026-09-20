@@ -45,13 +45,13 @@ def _make_marks_data(subjects=None):
     ])
 
 
-def _make_lesson(name="Čeština", abbrev="Čj", theme=None):
+def _make_lesson(name="Čeština", abbrev="Čj", note=None):
     return Lesson(
         subject_id="s1", subject_name=name, subject_abbrev=abbrev,
         teacher_id=None, teacher_name="Novák", teacher_abbrev="No",
         room_id=None, room_name="101", room_abbrev="101",
         hour_id="1", begin_time="08:00", end_time="08:45",
-        theme=theme, group_abbrev=None,
+        note=note, group_abbrev=None,
         change_description=None, is_changed=False,
     )
 
@@ -65,11 +65,11 @@ def _make_timetable():
     return WeekTimetable(days=[day])
 
 
-def _make_timetable_with_notes(theme="Vyjmenovaná slova", offset_days=-7):
+def _make_timetable_with_notes(note="Vyjmenovaná slova", offset_days=-7):
     day = TimetableDay(
         date=date.today() + timedelta(days=offset_days),
         day_type=DayType.WORK_DAY, day_description=None,
-        lessons=[_make_lesson("Čeština", "Čj", theme=theme)],
+        lessons=[_make_lesson("Čeština", "Čj", note=note)],
     )
     return WeekTimetable(days=[day])
 
@@ -401,7 +401,7 @@ class TestResolveTimetableWeeks:
 
     def test_notes_default_current_week(self, mock_ctx):
         val = _resolve_variable("timetable:notes", mock_ctx)
-        # Current week has no recorded themes
+        # Current week has no recorded notes
         assert val == "Učitelé zatím nezapsali probranou látku."
 
     def test_notes_last_week(self, mock_ctx):

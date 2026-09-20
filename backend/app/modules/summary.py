@@ -220,7 +220,7 @@ class SummaryModule:
     ) -> str:
         """Format a week's timetable.
 
-        When ``include_notes`` is set, the themes recorded by teachers (what was
+        When ``include_notes`` is set, the notes recorded by teachers (what was
         actually taught in each lesson) are listed under the day they belong to.
         """
         if timetable is None:
@@ -234,12 +234,12 @@ class SummaryModule:
             subjects = ", ".join(day.subject_abbrevs) if day.subject_abbrevs else "Žádné hodiny"
             lines.append(f"- {day_name} ({day.date.strftime('%d.%m.')}): {subjects}")
             if include_notes:
-                for subject, theme in day.notes:
-                    lines.append(f"    · probráno – {subject}: {theme}")
+                for subject, note in day.notes:
+                    lines.append(f"    · probráno – {subject}: {note}")
         return "\n".join(lines)
 
     def format_lesson_notes(self, timetable: WeekTimetable | None) -> str:
-        """Format only the lesson themes (probraná látka) recorded for a week."""
+        """Format only the lesson notes (probraná látka) recorded for a week."""
         if timetable is None:
             return "Poznámky k hodinám nejsou k dispozici."
         lines = []
@@ -249,7 +249,7 @@ class SummaryModule:
                 continue
             day_name = _DAY_NAMES.get(day.date.weekday(), str(day.date))
             lines.append(f"- {day_name} ({day.date.strftime('%d.%m.')}):")
-            lines.extend(f"    · {subject}: {theme}" for subject, theme in notes)
+            lines.extend(f"    · {subject}: {note}" for subject, note in notes)
         if not lines:
             return "Učitelé zatím nezapsali probranou látku."
         return "\n".join(lines)

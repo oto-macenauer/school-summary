@@ -67,6 +67,7 @@ class TestLesson:
         assert lesson.begin_time == "08:00"
         assert lesson.end_time == "08:45"
         assert lesson.is_changed is False
+        assert lesson.note == "Algebra"  # fixture atom uses the legacy Theme field
 
     def test_from_api_response_with_change(
         self, timetable_response: dict[str, Any]
@@ -84,6 +85,44 @@ class TestLesson:
         assert lesson is not None
         assert lesson.is_changed is True
         assert lesson.change_description == "Supplování"
+
+    def test_note_from_notice(self) -> None:
+        """Test that the lesson note is read from Notice."""
+        atom = {"SubjectId": "MAT", "HourId": "1", "Notice": "hláska, slabika"}
+        lesson = Lesson.from_api_response(atom, {}, {}, {}, {})
+
+        assert lesson is not None
+        assert lesson.note == "hláska, slabika"
+
+    def test_note_falls_back_to_theme(self) -> None:
+        """Test that Theme is used when Notice is absent or empty."""
+        for atom in (
+            {"SubjectId": "MAT", "HourId": "1", "Theme": "Algebra"},
+            {"SubjectId": "MAT", "HourId": "1", "Notice": "", "Theme": "Algebra"},
+            {"SubjectId": "MAT", "HourId": "1", "Notice": "   ", "Theme": "Algebra"},
+        ):
+            lesson = Lesson.from_api_response(atom, {}, {}, {}, {})
+            assert lesson is not None
+            assert lesson.note == "Algebra"
+
+    def test_notice_wins_over_theme(self) -> None:
+        """Test that Notice takes precedence when both are filled."""
+        atom = {
+            "SubjectId": "MAT", "HourId": "1",
+            "Notice": "kořen slova", "Theme": "Algebra",
+        }
+        lesson = Lesson.from_api_response(atom, {}, {}, {}, {})
+
+        assert lesson is not None
+        assert lesson.note == "kořen slova"
+
+    def test_note_absent(self) -> None:
+        """Test that a lesson without either field has no note."""
+        atom = {"SubjectId": "MAT", "HourId": "1", "Notice": None, "Theme": None}
+        lesson = Lesson.from_api_response(atom, {}, {}, {}, {})
+
+        assert lesson is not None
+        assert lesson.note is None
 
     def test_from_api_response_no_subject(self) -> None:
         """Test that atom without subject returns None."""
@@ -294,21 +333,21 @@ class TestGetTimetableDate:
 
 
 class TestLessonNotes:
-    """Tests for lesson themes (what teachers recorded as taught)."""
+    """Tests for lesson notes (what teachers recorded as taught)."""
 
     @staticmethod
-    def _lesson(abbrev: str, name: str, theme: str | None) -> Lesson:
+    def _lesson(abbrev: str, name: str, note: str | None) -> Lesson:
         return Lesson(
             subject_id="s1", subject_name=name, subject_abbrev=abbrev,
             teacher_id=None, teacher_name=None, teacher_abbrev=None,
             room_id=None, room_name=None, room_abbrev=None,
             hour_id="1", begin_time="08:00", end_time="08:45",
-            theme=theme, group_abbrev=None,
+            note=note, group_abbrev=None,
             change_description=None, is_changed=False,
         )
 
     def test_day_notes(self) -> None:
-        """Test that only lessons with a theme are reported."""
+        """Test that only lessons with a note are reported."""
         day = TimetableDay(
             date=date(2026, 9, 21),
             day_type=DayType.WORK_DAY,
@@ -323,7 +362,7 @@ class TestLessonNotes:
         assert day.has_notes is True
 
     def test_day_notes_strips_whitespace(self) -> None:
-        """Test that themes are stripped."""
+        """Test that notes are stripped."""
         day = TimetableDay(
             date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
             lessons=[self._lesson("M", "Matematika", "  Zlomky  ")],
@@ -339,7 +378,7 @@ class TestLessonNotes:
         assert day.notes == [("Matematika", "Zlomky")]
 
     def test_day_without_notes(self) -> None:
-        """Test a day where no theme was recorded."""
+        """Test a day where no note was recorded."""
         day = TimetableDay(
             date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
             lessons=[self._lesson("M", "Matematika", None)],
@@ -381,7 +420,7 @@ class TestLessonNotes:
         assert week.covers(date(2026, 9, 21)) is False
 
     def test_summary_dict_exposes_notes(self) -> None:
-        """Test that serialization exposes themes and week boundaries."""
+        """Test that serialization exposes notes and week boundaries."""
         day = TimetableDay(
             date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
             lessons=[self._lesson("M", "Matematika", "Zlomky")],
@@ -392,4 +431,4 @@ class TestLessonNotes:
         assert d["week_start"] == "2026-09-21"
         assert d["week_end"] == "2026-09-21"
         assert d["days"][0]["has_notes"] is True
-        assert d["days"][0]["lessons"][0]["theme"] == "Zlomky"
+        assert d["days"][0]["lessons"][0]["note"] == "Zlomky"

@@ -64,7 +64,7 @@ prompts:
   # ── Weekly Summary Prompt ──
   # Variables: {week_type}, {date_from}, {date_to}, {messages},
   #            {timetable}, {lesson_notes}, {marks}, {gdrive_report}, {student_info}
-  # {timetable} already lists the lesson themes under each day;
+  # {timetable} already lists the lesson notes under each day;
   # {lesson_notes} is the same information on its own.
   summary: |
     Jsi školní asistent. Shrň hlavní události za {week_type} ({date_from} – {date_to}).
