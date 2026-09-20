@@ -62,6 +62,9 @@ app_data/
 node_modules/
 frontend/dist/
 
+# TypeScript incremental build state
+*.tsbuildinfo
+
 # OS
 .DS_Store
 Thumbs.db
