@@ -1,6 +1,19 @@
 # School Summary — common development tasks.
 # Requires GNU make, uv (backend) and npm (frontend).
 
+# On Windows GNU make runs recipes through cmd.exe, which does not strip the
+# single quotes these recipes use — grep/awk then receive a literal ' and fail.
+# Git for Windows ships the POSIX shell (and the coreutils the recipes call),
+# so point make at it. Not system32\bash.exe: that launches WSL, a different
+# filesystem with different tool versions.
+# Set unconditionally rather than probed: $(wildcard) splits its argument on
+# spaces, and this path has one. Override on the command line if Git lives
+# elsewhere: make help "SHELL=D:/Git/bin/bash.exe"
+ifeq ($(OS),Windows_NT)
+SHELL := C:/Program Files/Git/bin/bash.exe
+.SHELLFLAGS := -c
+endif
+
 BACKEND  := backend
 FRONTEND := frontend
 UV       := uv --project $(BACKEND)
