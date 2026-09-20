@@ -26,7 +26,7 @@ GRANT_TYPE_PASSWORD: Final = "password"
 GRANT_TYPE_REFRESH: Final = "refresh_token"
 
 # Canteen API constants
-CANTEEN_API_URL: Final = "https://app.strava.cz/api/jidelnicky"
+CANTEEN_API_URL: Final = "https://app.strava.cz/api/jidelnickyPage"
 
 # Default update intervals (seconds)
 DEFAULT_TIMETABLE_UPDATE_INTERVAL: Final = 3600

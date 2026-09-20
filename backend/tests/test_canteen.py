@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
+from app.const import CANTEEN_API_URL
 from app.modules.canteen import (
     CanteenData,
     CanteenDay,
@@ -22,8 +23,14 @@ from .conftest import load_fixture
 
 @pytest.fixture
 def canteen_response() -> list[dict[str, Any]]:
-    """Load canteen fixture."""
+    """Load legacy (/api/jidelnicky) canteen fixture."""
     return load_fixture("canteen_response.json")
+
+
+@pytest.fixture
+def canteen_page_response() -> dict[str, Any]:
+    """Load current (/api/jidelnickyPage) canteen fixture."""
+    return load_fixture("canteen_page_response.json")
 
 
 class TestCanteenMeal:
@@ -179,6 +186,44 @@ class TestParseCanteenResponse:
         days = parse_canteen_response(data)
         assert len(days) == 0
 
+    def test_parse_page_response(self, canteen_page_response: dict[str, Any]) -> None:
+        """Test parsing the /api/jidelnickyPage response shape."""
+        days = parse_canteen_response(canteen_page_response)
+
+        assert len(days) == 2
+        assert days[0].date == date(2026, 9, 21)
+        assert days[1].date == date(2026, 9, 22)
+
+    def test_parse_page_first_meal(self, canteen_page_response: dict[str, Any]) -> None:
+        """Test meal parsing from the page response shape."""
+        days = parse_canteen_response(canteen_page_response)
+        first_meal = days[0].meals[0]
+
+        assert first_meal.druh == "PR"
+        assert first_meal.druh_popis == "Přesnídávka"
+        assert first_meal.nazev == "Smetanovo - tvarohová pomazánka, rohlík"
+        assert first_meal.alergeny[0] == ("01", "Obiloviny obsahující lepek")
+
+    def test_parse_page_response_empty_meals(self) -> None:
+        """Test page response with no meal tables."""
+        assert parse_canteen_response({"canteen": {}, "meals": {}, "objednavkyOdDo": ""}) == []
+
+    def test_parse_bare_tables_dict(self) -> None:
+        """Test a dict of tables without the ``meals`` wrapper."""
+        data = {
+            "table0": [
+                {"datum": "11.02.2026", "nazev": "Řízek", "druh": "OB", "druh_popis": "Oběd", "alergeny": []}
+            ]
+        }
+        days = parse_canteen_response(data)
+        assert len(days) == 1
+        assert days[0].meals[0].nazev == "Řízek"
+
+    def test_parse_unexpected_type(self) -> None:
+        """Test that an unexpected payload type yields no days."""
+        assert parse_canteen_response("nonsense") == []
+        assert parse_canteen_response(None) == []
+
 
 class TestCanteenData:
     """Tests for CanteenData dataclass."""
@@ -233,6 +278,31 @@ class TestCanteenModule:
         call_args = mock_session.post.call_args
         sent_body = json.loads(call_args[1]["data"])
         assert sent_body["cislo"] == "11199"
+
+    @pytest.mark.asyncio
+    async def test_get_menu_page_response(self, canteen_page_response: dict[str, Any]) -> None:
+        """Test fetching menu from the /api/jidelnickyPage response shape."""
+        mock_resp = AsyncMock()
+        mock_resp.status = 200
+        mock_resp.raise_for_status = MagicMock()
+        mock_resp.json = AsyncMock(return_value=canteen_page_response)
+        mock_resp.__aenter__ = AsyncMock(return_value=mock_resp)
+        mock_resp.__aexit__ = AsyncMock(return_value=None)
+
+        mock_session = MagicMock()
+        mock_session.post = MagicMock(return_value=mock_resp)
+
+        module = CanteenModule(
+            session=mock_session,
+            cislo="11199",
+            s5url="https://wss52.strava.cz/WSStravne5_4/WSStravne5.svc",
+        )
+        result = await module.get_menu()
+
+        assert len(result.days) == 2
+        assert result.days[0].date == date(2026, 9, 21)
+        assert mock_session.post.call_args[0][0] == CANTEEN_API_URL
+        assert CANTEEN_API_URL.endswith("/api/jidelnickyPage")
 
     @pytest.mark.asyncio
     async def test_get_menu_strava_api_error(self) -> None:

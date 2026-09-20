@@ -88,14 +88,31 @@ def _parse_date(date_str: str) -> date | None:
         return None
 
 
-def parse_canteen_response(data: list[dict[str, Any]]) -> list[CanteenDay]:
+def _extract_meal_tables(data: Any) -> dict[str, Any]:
+    """Return the dict holding the tableN meal lists.
+
+    Supports both the legacy ``/api/jidelnicky`` shape (a list whose first item
+    holds the tables) and the current ``/api/jidelnickyPage`` shape (an object
+    with the tables under ``meals``).
+    """
+    if isinstance(data, list):
+        first = data[0] if data else {}
+        return first if isinstance(first, dict) else {}
+    if isinstance(data, dict):
+        meals = data.get("meals")
+        if isinstance(meals, dict):
+            return meals
+        return data
+    return {}
+
+
+def parse_canteen_response(data: Any) -> list[CanteenDay]:
     """Parse the Strava API response into CanteenDay objects."""
     days_by_date: dict[date, list[CanteenMeal]] = {}
 
-    if not data:
+    entry = _extract_meal_tables(data)
+    if not entry:
         return []
-
-    entry = data[0] if data else {}
 
     for key in sorted(entry.keys()):
         if not key.startswith("table"):
@@ -105,6 +122,8 @@ def parse_canteen_response(data: list[dict[str, Any]]) -> list[CanteenDay]:
             continue
 
         for item in items:
+            if not isinstance(item, dict):
+                continue
             datum_str = item.get("datum", "")
             parsed_date = _parse_date(datum_str)
             if parsed_date is None:
