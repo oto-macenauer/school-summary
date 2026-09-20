@@ -115,20 +115,41 @@ YAML-based config at `app_data/config.yaml` (auto-generated on first startup):
 
 ## Build Commands
 
-This is a Windows environment. Use `powershell.exe -Command "..."` to run commands:
+Backend dependencies are managed with **uv** (`backend/pyproject.toml` + `backend/uv.lock`).
+Common tasks live in the root `Makefile` (needs GNU make; `make help` lists everything):
+
+```bash
+make install          # uv sync + npm install
+make test             # backend pytest + frontend vitest
+make test-backend
+make coverage         # pytest with HTML coverage report
+make lint             # ruff (backend) + vue-tsc (frontend)
+make dev-backend      # uvicorn with reload on :8000
+make dev-frontend     # vite dev server
+make build            # frontend production bundle
+make docker-up        # docker compose up -d --build
+```
+
+This is a Windows environment; without GNU make run the underlying commands directly:
 
 ```powershell
 # Run all backend tests
-powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\ -v"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run pytest -v"
 
 # Run specific test file
-powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\test_auth.py -v"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run pytest tests\test_auth.py -v"
 
 # Run specific test
-powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\test_auth.py -v -k 'test_login_success'"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run pytest tests\test_auth.py -v -k 'test_login_success'"
 
 # Run with coverage
-powershell.exe -Command "cd c:\Projects\school-summary\backend; python -m pytest tests\ -v --cov=app --cov-report=html"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run pytest -v --cov=app --cov-report=html"
+
+# Lint backend
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run ruff check ."
+
+# Add or update a dependency (rewrites pyproject.toml and uv.lock)
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv add httpx"
 
 # Type-check frontend
 powershell.exe -Command "cd c:\Projects\school-summary\frontend; npx vue-tsc --noEmit"
@@ -137,7 +158,7 @@ powershell.exe -Command "cd c:\Projects\school-summary\frontend; npx vue-tsc --n
 powershell.exe -Command "cd c:\Projects\school-summary\frontend; npm run build"
 
 # Start backend dev server
-powershell.exe -Command "cd c:\Projects\school-summary\backend; uvicorn app.main:app --reload --port 8000"
+powershell.exe -Command "cd c:\Projects\school-summary\backend; uv run uvicorn app.main:app --reload --port 8000"
 
 # Start frontend dev server
 powershell.exe -Command "cd c:\Projects\school-summary\frontend; npm run dev"

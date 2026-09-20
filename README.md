@@ -36,12 +36,14 @@ frontend/          Vue 3 + TypeScript + Vite
     styles/        Liquid glass design system
 
 docker-compose.yml
+Makefile           Common dev tasks (install, test, lint, build, docker)
 ```
 
 ## Prerequisites
 
-- Python 3.11+
+- Python 3.12+ and [uv](https://docs.astral.sh/uv/) (uv can install Python itself)
 - Node.js 18+
+- (Optional) GNU make — the root `Makefile` wraps every common task; run `make help`
 - A Bakalari school account (for timetable, marks, messages)
 - (Optional) Gemini API key for AI features
 - (Optional) Google Drive service account for weekly reports
@@ -57,17 +59,18 @@ cd school-summary
 
 ### 2. Backend setup
 
+Dependencies are managed with [uv](https://docs.astral.sh/uv/) (`pyproject.toml` + `uv.lock`):
+
 ```bash
 cd backend
-python -m venv .venv
+uv sync          # creates .venv and installs runtime + dev dependencies
+```
 
-# Windows
-.venv\Scripts\activate
+Run commands through `uv run` — no manual activation needed:
 
-# Linux/macOS
-source .venv/bin/activate
-
-pip install -r requirements.txt
+```bash
+uv run pytest
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
 ### 3. Frontend setup
@@ -126,11 +129,14 @@ Example: if login is at `https://bakalari.zszb.cz/login`, use `https://bakalari.
 
 ## Running locally (development)
 
+With GNU make, `make dev-backend` and `make dev-frontend` start the two servers
+(`make help` lists all tasks). The equivalent raw commands:
+
 ### Backend
 
 ```bash
 cd backend
-uvicorn app.main:app --reload --port 8000
+uv run uvicorn app.main:app --reload --port 8000
 ```
 
 The API is available at `http://localhost:8000`. Interactive docs at `http://localhost:8000/docs`.
@@ -181,16 +187,22 @@ The `app_data/` directory is mounted as a volume for persistent config and stora
 cd backend
 
 # Run all tests
-pytest tests/ -v
+uv run pytest -v
 
 # Run specific module tests
-pytest tests/test_auth.py -v
+uv run pytest tests/test_auth.py -v
 
 # Run with coverage
-pytest tests/ -v --cov=app --cov-report=html
+uv run pytest -v --cov=app --cov-report=html
+
+# Lint
+uv run ruff check .
 ```
 
-191 tests covering auth, timetable, marks, komens, storage, gdrive, gemini, summary, prepare, cache, log manager, and config.
+Or from the repository root: `make test`, `make coverage`, `make lint`.
+
+The suite covers auth, timetable, marks, komens, storage, gdrive, gemini, summary,
+prepare, canteen, cache, log manager, scheduler, and config.
 
 ## Troubleshooting
 
