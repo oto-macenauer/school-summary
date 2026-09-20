@@ -50,6 +50,8 @@ class StudentContext:
 
     # Cached data
     timetable: WeekTimetable | None = None
+    timetable_last: WeekTimetable | None = None
+    timetable_next: WeekTimetable | None = None
     marks: MarksData | None = None
     komens: MessagesData | None = None
     summary_current: SummaryData | None = None

@@ -25,13 +25,16 @@ Zprávy z Komensu:
 Rozvrh:
 {timetable}
 
+Probraná látka (zápisy učitelů):
+{lesson_notes}
+
 Nové známky:
 {marks}
 
 Týdenní report z Google Drive:
 {gdrive_report}
 
-Vytvoř stručné shrnutí v češtině. Zaměř se na důležité události, testy, úkoly a změny v rozvrhu.\
+Vytvoř stručné shrnutí v češtině. Zaměř se na důležité události, testy, úkoly, změny v rozvrhu a na to, co se ve škole probíralo.\
 """
 
 DEFAULT_SUMMARY_SYSTEM = """\

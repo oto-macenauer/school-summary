@@ -136,6 +136,23 @@ class TimetableDay:
         """Get list of subject abbreviations for this day (chronologically ordered)."""
         return [lesson.subject_abbrev for lesson in self.lessons]
 
+    @property
+    def notes(self) -> list[tuple[str, str]]:
+        """Get ``(subject, theme)`` pairs for lessons that have a theme.
+
+        The theme is what the teacher recorded as taught in that lesson.
+        """
+        return [
+            (lesson.subject_abbrev or lesson.subject_name, lesson.theme.strip())
+            for lesson in self.lessons
+            if lesson.theme and lesson.theme.strip()
+        ]
+
+    @property
+    def has_notes(self) -> bool:
+        """Check if any lesson of this day has a recorded theme."""
+        return bool(self.notes)
+
     def to_detailed_dict(self) -> dict[str, Any]:
         """Convert to detailed dictionary with full lesson information."""
         return {
@@ -143,6 +160,7 @@ class TimetableDay:
             "day_type": self.day_type.value,
             "description": self.day_description,
             "is_school_day": self.is_school_day,
+            "has_notes": self.has_notes,
             "lessons": [
                 {
                     "abbrev": lesson.subject_abbrev,
@@ -195,6 +213,28 @@ class WeekTimetable:
         )
         return future_days[0] if future_days else None
 
+    @property
+    def has_notes(self) -> bool:
+        """Check if any day of the week has recorded lesson themes."""
+        return any(day.has_notes for day in self.days)
+
+    @property
+    def week_start(self) -> date | None:
+        """First date covered by the week."""
+        return min((d.date for d in self.days), default=None)
+
+    @property
+    def week_end(self) -> date | None:
+        """Last date covered by the week."""
+        return max((d.date for d in self.days), default=None)
+
+    def covers(self, target_date: date) -> bool:
+        """Check whether the timetable covers the given date."""
+        start, end = self.week_start, self.week_end
+        if start is None or end is None:
+            return False
+        return start <= target_date <= end
+
     def get_subject_name_mapping(self) -> dict[str, str]:
         """Get mapping of abbreviations to full subject names."""
         mapping: dict[str, str] = {}
@@ -209,6 +249,9 @@ class WeekTimetable:
         return {
             "week_subjects": self.all_subjects,
             "subject_names": self.get_subject_name_mapping(),
+            "has_notes": self.has_notes,
+            "week_start": self.week_start.isoformat() if self.week_start else None,
+            "week_end": self.week_end.isoformat() if self.week_end else None,
             "days": [day.to_detailed_dict() for day in self.days],
         }
 

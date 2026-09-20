@@ -244,9 +244,37 @@ class BackgroundScheduler:
                 return
 
     async def _refresh_timetable(self, ctx: StudentContext) -> None:
+        """Refresh last, current and next week timetables.
+
+        Past weeks carry the themes teachers recorded (what was taught), which
+        feed the weekly summaries, so they are fetched alongside the current one.
+        """
         ctx.timetable = await ctx.timetable_module.get_actual_timetable()
+
+        last_start, _ = get_last_week_range()
+        next_start, _ = get_next_week_range()
+        for attr, week_start in (("timetable_last", last_start), ("timetable_next", next_start)):
+            try:
+                setattr(
+                    ctx, attr,
+                    await ctx.timetable_module.get_actual_timetable(week_start),
+                )
+            except Exception as err:
+                _LOGGER.warning(
+                    "Failed to refresh %s for %s: %s", attr, ctx.name, err,
+                )
+
         ctx.timetable_updated = datetime.now()
-        _LOGGER.debug("Refreshed timetable for %s", ctx.name)
+        _LOGGER.debug("Refreshed timetables for %s", ctx.name)
+
+    @staticmethod
+    def _timetable_for_week(ctx: StudentContext, week_type: str):
+        """Return the cached timetable matching the summary week."""
+        if week_type == "last":
+            return ctx.timetable_last or ctx.timetable
+        if week_type == "next":
+            return ctx.timetable_next or ctx.timetable
+        return ctx.timetable
 
     async def _refresh_marks(self, ctx: StudentContext) -> None:
         old_mark_ids = self._known_mark_ids.get(ctx.name, set())
@@ -354,11 +382,12 @@ class BackgroundScheduler:
             messages = ctx.summary_module.get_week_messages(week_start, week_end)
             marks = ctx.summary_module.extract_new_marks(ctx.marks, week_start, week_end)
             gdrive_content = await get_gdrive_content(week_start, week_end)
+            week_timetable = self._timetable_for_week(ctx, week_type)
 
             prompt = ctx.summary_module.build_prompt_from_template(
                 template=prompts.summary,
                 messages=messages,
-                timetable=ctx.timetable,
+                timetable=week_timetable,
                 marks=marks,
                 week_start=week_start,
                 week_end=week_end,

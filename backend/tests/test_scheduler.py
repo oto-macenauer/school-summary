@@ -11,7 +11,11 @@ import pytest
 
 from app.models.config import AppConfig, UpdateIntervalsConfig
 from app.modules.prepare import PrepareData
-from app.modules.summary import SummaryData
+from app.modules.summary import (
+    SummaryData,
+    get_last_week_range,
+    get_next_week_range,
+)
 from app.services.scheduler import BackgroundScheduler, TaskStatus
 from app.services.student_manager import StudentContext
 
@@ -26,6 +30,8 @@ def mock_student_context() -> MagicMock:
     ctx = MagicMock(spec=StudentContext)
     ctx.name = "TestStudent"
     ctx.timetable = None
+    ctx.timetable_last = None
+    ctx.timetable_next = None
     ctx.marks = None
     ctx.komens = None
     ctx.timetable_module = AsyncMock()
@@ -698,3 +704,96 @@ class TestTriggerTask:
         assert "summary:TestStudent" in keys
         assert len(keys) == 5  # timetable, marks, komens, summary, prepare
         await scheduler.stop()
+
+
+# ---------------------------------------------------------------------------
+# _refresh_timetable tests
+# ---------------------------------------------------------------------------
+
+class TestRefreshTimetable:
+    """Tests for multi-week timetable refresh."""
+
+    @pytest.mark.asyncio
+    async def test_fetches_last_current_and_next_week(self, scheduler, mock_student_context):
+        """Should cache the previous and next week alongside the current one."""
+        current, last, nxt = MagicMock(), MagicMock(), MagicMock()
+        calls: list = []
+
+        async def fake_get(target_date=None):
+            calls.append(target_date)
+            if target_date is None:
+                return current
+            return last if target_date == get_last_week_range()[0] else nxt
+
+        mock_student_context.timetable_module.get_actual_timetable = AsyncMock(side_effect=fake_get)
+
+        await scheduler._refresh_timetable(mock_student_context)
+
+        assert mock_student_context.timetable is current
+        assert mock_student_context.timetable_last is last
+        assert mock_student_context.timetable_next is nxt
+        assert calls == [None, get_last_week_range()[0], get_next_week_range()[0]]
+        assert mock_student_context.timetable_updated is not None
+
+    @pytest.mark.asyncio
+    async def test_current_week_survives_failed_extra_weeks(self, scheduler, mock_student_context):
+        """A failing past/future week must not break the current one."""
+        current = MagicMock()
+
+        async def fake_get(target_date=None):
+            if target_date is None:
+                return current
+            raise RuntimeError("API down")
+
+        mock_student_context.timetable_module.get_actual_timetable = AsyncMock(side_effect=fake_get)
+
+        await scheduler._refresh_timetable(mock_student_context)
+
+        assert mock_student_context.timetable is current
+        assert mock_student_context.timetable_last is None
+        assert mock_student_context.timetable_next is None
+
+    def test_timetable_for_week_picks_matching_week(self, scheduler, mock_student_context):
+        """Summary weeks map to their own cached timetable."""
+        mock_student_context.timetable = MagicMock(name="current")
+        mock_student_context.timetable_last = MagicMock(name="last")
+        mock_student_context.timetable_next = MagicMock(name="next")
+
+        assert scheduler._timetable_for_week(mock_student_context, "last") is mock_student_context.timetable_last
+        assert scheduler._timetable_for_week(mock_student_context, "current") is mock_student_context.timetable
+        assert scheduler._timetable_for_week(mock_student_context, "next") is mock_student_context.timetable_next
+
+    def test_timetable_for_week_falls_back_to_current(self, scheduler, mock_student_context):
+        """Missing week caches fall back to the current timetable."""
+        mock_student_context.timetable = MagicMock(name="current")
+        mock_student_context.timetable_last = None
+        mock_student_context.timetable_next = None
+
+        assert scheduler._timetable_for_week(mock_student_context, "last") is mock_student_context.timetable
+        assert scheduler._timetable_for_week(mock_student_context, "next") is mock_student_context.timetable
+
+    @pytest.mark.asyncio
+    async def test_summary_uses_week_specific_timetable(self, scheduler, mock_student_context):
+        """Each summary week is built from the timetable of that week."""
+        scheduler._running = True
+        mock_student_context.timetable = MagicMock(name="current")
+        mock_student_context.timetable_last = MagicMock(name="last")
+        mock_student_context.timetable_next = MagicMock(name="next")
+        mock_student_context.marks = MagicMock()
+        mock_student_context.gdrive_client = None
+        scheduler._manager.gemini.generate_content = AsyncMock(return_value="summary text")
+        mock_student_context.summary_module.get_week_messages.return_value = []
+        mock_student_context.summary_module.extract_new_marks.return_value = []
+        mock_student_context.summary_module.build_prompt_from_template.side_effect = (
+            lambda **kwargs: f"prompt-{kwargs['week_type']}"
+        )
+
+        await scheduler._refresh_summary(mock_student_context)
+
+        used = {
+            c.kwargs["week_type"]: c.kwargs["timetable"]
+            for c in mock_student_context.summary_module.build_prompt_from_template.call_args_list
+        }
+        assert used["last"] is mock_student_context.timetable_last
+        assert used["current"] is mock_student_context.timetable
+        assert used["next"] is mock_student_context.timetable_next

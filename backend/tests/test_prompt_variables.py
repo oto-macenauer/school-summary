@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -47,13 +47,13 @@ def _make_marks_data(subjects=None):
     ])
 
 
-def _make_lesson(name="Čeština", abbrev="Čj"):
+def _make_lesson(name="Čeština", abbrev="Čj", theme=None):
     return Lesson(
         subject_id="s1", subject_name=name, subject_abbrev=abbrev,
         teacher_id=None, teacher_name="Novák", teacher_abbrev="No",
         room_id=None, room_name="101", room_abbrev="101",
         hour_id="1", begin_time="08:00", end_time="08:45",
-        theme=None, group_abbrev=None,
+        theme=theme, group_abbrev=None,
         change_description=None, is_changed=False,
     )
 
@@ -63,6 +63,15 @@ def _make_timetable():
     day = TimetableDay(
         date=today, day_type=DayType.WORK_DAY, day_description=None,
         lessons=[_make_lesson("Čeština", "Čj"), _make_lesson("Matematika", "Ma")],
+    )
+    return WeekTimetable(days=[day])
+
+
+def _make_timetable_with_notes(theme="Vyjmenovaná slova", offset_days=-7):
+    day = TimetableDay(
+        date=date.today() + timedelta(days=offset_days),
+        day_type=DayType.WORK_DAY, day_description=None,
+        lessons=[_make_lesson("Čeština", "Čj", theme=theme)],
     )
     return WeekTimetable(days=[day])
 
@@ -90,6 +99,8 @@ def mock_ctx(tmp_path):
     ctx.name = "TestStudent"
     ctx.marks = _make_marks_data()
     ctx.timetable = _make_timetable()
+    ctx.timetable_last = _make_timetable_with_notes("Vyjmenovaná slova", -7)
+    ctx.timetable_next = _make_timetable_with_notes(None, 7)
     ctx.komens = None
     ctx.summary_current = _make_summary("current")
     ctx.summary_last = _make_summary("last")
@@ -374,3 +385,34 @@ class TestEdgeCases:
     def test_colon_params_with_spaces(self, mock_ctx):
         val = _resolve_variable("marks : Čeština", mock_ctx)
         assert "Čeština" in val
+
+
+class TestResolveTimetableWeeks:
+    """Tests for week-scoped timetable variables and lesson notes."""
+
+    def test_last_week(self, mock_ctx):
+        val = _resolve_variable("timetable:last", mock_ctx)
+        assert val is not None
+        assert "Vyjmenovaná slova" in val
+
+    def test_next_week(self, mock_ctx):
+        val = _resolve_variable("timetable:next", mock_ctx)
+        assert val is not None
+        assert "Čj" in val
+        assert "probráno" not in val
+
+    def test_notes_default_current_week(self, mock_ctx):
+        val = _resolve_variable("timetable:notes", mock_ctx)
+        # Current week has no recorded themes
+        assert val == "Učitelé zatím nezapsali probranou látku."
+
+    def test_notes_last_week(self, mock_ctx):
+        val = _resolve_variable("timetable:notes:last", mock_ctx)
+        assert val is not None
+        assert "Čj: Vyjmenovaná slova" in val
+
+    def test_notes_available_in_variable_list(self, mock_ctx):
+        names = [v["name"] for v in get_available_variables(mock_ctx)]
+        assert "timetable:last" in names
+        assert "timetable:notes" in names
+        assert "timetable:notes:last" in names

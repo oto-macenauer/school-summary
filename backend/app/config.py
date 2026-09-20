@@ -63,7 +63,9 @@ update_intervals:
 prompts:
   # ── Weekly Summary Prompt ──
   # Variables: {week_type}, {date_from}, {date_to}, {messages},
-  #            {timetable}, {marks}, {gdrive_report}, {student_info}
+  #            {timetable}, {lesson_notes}, {marks}, {gdrive_report}, {student_info}
+  # {timetable} already lists the lesson themes under each day;
+  # {lesson_notes} is the same information on its own.
   summary: |
     Jsi školní asistent. Shrň hlavní události za {week_type} ({date_from} – {date_to}).
 
@@ -73,6 +75,9 @@ prompts:
     Rozvrh:
     {timetable}
 
+    Probraná látka (zápisy učitelů):
+    {lesson_notes}
+
     Nové známky:
     {marks}
 
@@ -80,7 +85,7 @@ prompts:
     {gdrive_report}
 
     Vytvoř stručné shrnutí v češtině. Zaměř se na důležité události,
-    testy, úkoly a změny v rozvrhu.
+    testy, úkoly, změny v rozvrhu a na to, co se ve škole probíralo.
 
   # ── Weekly Summary System Instruction ──
   summary_system: |

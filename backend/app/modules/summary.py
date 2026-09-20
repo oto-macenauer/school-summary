@@ -80,6 +80,12 @@ def get_next_week_range() -> tuple[date, date]:
     return week_start, week_end
 
 
+_DAY_NAMES = {
+    0: "Pondělí", 1: "Úterý", 2: "Středa", 3: "Čtvrtek",
+    4: "Pátek", 5: "Sobota", 6: "Neděle",
+}
+
+
 class SummaryModule:
     """Module for aggregating data and building summary prompts."""
 
@@ -209,21 +215,43 @@ class SummaryModule:
         marks.sort(key=lambda m: m.date or datetime.min, reverse=True)
         return marks
 
-    def format_timetable(self, timetable: WeekTimetable | None) -> str:
+    def format_timetable(
+        self, timetable: WeekTimetable | None, include_notes: bool = True,
+    ) -> str:
+        """Format a week's timetable.
+
+        When ``include_notes`` is set, the themes recorded by teachers (what was
+        actually taught in each lesson) are listed under the day they belong to.
+        """
         if timetable is None:
             return "Rozvrh není k dispozici."
         lines = []
-        day_names = {
-            0: "Pondělí", 1: "Úterý", 2: "Středa", 3: "Čtvrtek",
-            4: "Pátek", 5: "Sobota", 6: "Neděle",
-        }
         for day in timetable.days:
-            day_name = day_names.get(day.date.weekday(), str(day.date))
+            day_name = _DAY_NAMES.get(day.date.weekday(), str(day.date))
             if not day.is_school_day:
                 lines.append(f"- {day_name}: {day.day_description or 'Volno'}")
-            else:
-                subjects = ", ".join(day.subject_abbrevs) if day.subject_abbrevs else "Žádné hodiny"
-                lines.append(f"- {day_name} ({day.date.strftime('%d.%m.')}): {subjects}")
+                continue
+            subjects = ", ".join(day.subject_abbrevs) if day.subject_abbrevs else "Žádné hodiny"
+            lines.append(f"- {day_name} ({day.date.strftime('%d.%m.')}): {subjects}")
+            if include_notes:
+                for subject, theme in day.notes:
+                    lines.append(f"    · probráno – {subject}: {theme}")
+        return "\n".join(lines)
+
+    def format_lesson_notes(self, timetable: WeekTimetable | None) -> str:
+        """Format only the lesson themes (probraná látka) recorded for a week."""
+        if timetable is None:
+            return "Poznámky k hodinám nejsou k dispozici."
+        lines = []
+        for day in timetable.days:
+            notes = day.notes
+            if not notes:
+                continue
+            day_name = _DAY_NAMES.get(day.date.weekday(), str(day.date))
+            lines.append(f"- {day_name} ({day.date.strftime('%d.%m.')}):")
+            lines.extend(f"    · {subject}: {theme}" for subject, theme in notes)
+        if not lines:
+            return "Učitelé zatím nezapsali probranou látku."
         return "\n".join(lines)
 
     def format_messages(self, messages: list[MessageSummary]) -> str:
@@ -270,6 +298,7 @@ class SummaryModule:
             "date_to": week_end.strftime("%d.%m.%Y"),
             "messages": self.format_messages(messages),
             "timetable": self.format_timetable(timetable),
+            "lesson_notes": self.format_lesson_notes(timetable),
             "marks": self.format_marks(marks),
             "gdrive_report": gdrive_report or "Žádný report k dispozici.",
             "student_info": f"\nInformace o studentovi:\n{student_info}\n" if student_info else "",

@@ -22,7 +22,17 @@ export interface TimetableDay {
   day_type: string
   description: string | null
   is_school_day: boolean
+  has_notes?: boolean
   lessons: Lesson[]
+}
+
+export interface TimetableWeek {
+  week_subjects: string[]
+  subject_names: Record<string, string>
+  has_notes: boolean
+  week_start: string | null
+  week_end: string | null
+  days: TimetableDay[]
 }
 
 export interface Lesson {

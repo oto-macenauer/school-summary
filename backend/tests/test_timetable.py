@@ -291,3 +291,105 @@ class TestGetTimetableDate:
         mock_date.today.return_value = date(2026, 2, 15)  # Sunday
         mock_date.side_effect = lambda *args, **kw: date(*args, **kw)
         assert _get_timetable_date() == date(2026, 2, 16)  # Monday
+
+
+class TestLessonNotes:
+    """Tests for lesson themes (what teachers recorded as taught)."""
+
+    @staticmethod
+    def _lesson(abbrev: str, name: str, theme: str | None) -> Lesson:
+        return Lesson(
+            subject_id="s1", subject_name=name, subject_abbrev=abbrev,
+            teacher_id=None, teacher_name=None, teacher_abbrev=None,
+            room_id=None, room_name=None, room_abbrev=None,
+            hour_id="1", begin_time="08:00", end_time="08:45",
+            theme=theme, group_abbrev=None,
+            change_description=None, is_changed=False,
+        )
+
+    def test_day_notes(self) -> None:
+        """Test that only lessons with a theme are reported."""
+        day = TimetableDay(
+            date=date(2026, 9, 21),
+            day_type=DayType.WORK_DAY,
+            day_description=None,
+            lessons=[
+                self._lesson("M", "Matematika", "Sčítání do 100"),
+                self._lesson("ČJ", "Čeština", None),
+                self._lesson("AJ", "Angličtina", "   "),
+            ],
+        )
+        assert day.notes == [("M", "Sčítání do 100")]
+        assert day.has_notes is True
+
+    def test_day_notes_strips_whitespace(self) -> None:
+        """Test that themes are stripped."""
+        day = TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("M", "Matematika", "  Zlomky  ")],
+        )
+        assert day.notes == [("M", "Zlomky")]
+
+    def test_day_notes_falls_back_to_name(self) -> None:
+        """Test that a missing abbreviation falls back to the subject name."""
+        day = TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("", "Matematika", "Zlomky")],
+        )
+        assert day.notes == [("Matematika", "Zlomky")]
+
+    def test_day_without_notes(self) -> None:
+        """Test a day where no theme was recorded."""
+        day = TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("M", "Matematika", None)],
+        )
+        assert day.notes == []
+        assert day.has_notes is False
+
+    def test_week_has_notes(self) -> None:
+        """Test week-level note detection."""
+        with_notes = TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("M", "Matematika", "Zlomky")],
+        )
+        without = TimetableDay(
+            date=date(2026, 9, 22), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("M", "Matematika", None)],
+        )
+        assert WeekTimetable(days=[with_notes, without]).has_notes is True
+        assert WeekTimetable(days=[without]).has_notes is False
+        assert WeekTimetable(days=[]).has_notes is False
+
+    def test_week_range_and_covers(self) -> None:
+        """Test week boundaries and date coverage."""
+        week = WeekTimetable(days=[
+            TimetableDay(date(2026, 9, 21), DayType.WORK_DAY, None, []),
+            TimetableDay(date(2026, 9, 25), DayType.WORK_DAY, None, []),
+        ])
+        assert week.week_start == date(2026, 9, 21)
+        assert week.week_end == date(2026, 9, 25)
+        assert week.covers(date(2026, 9, 23)) is True
+        assert week.covers(date(2026, 9, 21)) is True
+        assert week.covers(date(2026, 9, 26)) is False
+
+    def test_empty_week_covers_nothing(self) -> None:
+        """Test that an empty week covers no date."""
+        week = WeekTimetable(days=[])
+        assert week.week_start is None
+        assert week.week_end is None
+        assert week.covers(date(2026, 9, 21)) is False
+
+    def test_summary_dict_exposes_notes(self) -> None:
+        """Test that serialization exposes themes and week boundaries."""
+        day = TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[self._lesson("M", "Matematika", "Zlomky")],
+        )
+        d = WeekTimetable(days=[day]).to_summary_dict()
+
+        assert d["has_notes"] is True
+        assert d["week_start"] == "2026-09-21"
+        assert d["week_end"] == "2026-09-21"
+        assert d["days"][0]["has_notes"] is True
+        assert d["days"][0]["lessons"][0]["theme"] == "Zlomky"

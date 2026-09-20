@@ -73,6 +73,18 @@ def _resolve_timetable(params: list[str], ctx: StudentContext) -> str:
             ctx.timetable, date.today() + timedelta(days=1),
         )
         return text
+    if param == "last":
+        return ctx.summary_module.format_timetable(ctx.timetable_last)
+    if param == "next":
+        return ctx.summary_module.format_timetable(ctx.timetable_next)
+    if param == "notes":
+        # Themes recorded by teachers; default to the current week.
+        week = params[1].lower() if len(params) > 1 else "current"
+        source = {
+            "last": ctx.timetable_last,
+            "next": ctx.timetable_next,
+        }.get(week, ctx.timetable)
+        return ctx.summary_module.format_lesson_notes(source)
 
     return ctx.summary_module.format_timetable(ctx.timetable)
 
@@ -243,6 +255,10 @@ def get_available_variables(ctx: StudentContext) -> list[dict[str, str]]:
         {"name": "timetable", "category": "timetable", "description": "Celý týdenní rozvrh"},
         {"name": "timetable:today", "category": "timetable", "description": "Dnešní rozvrh"},
         {"name": "timetable:tomorrow", "category": "timetable", "description": "Zítřejší rozvrh"},
+        {"name": "timetable:last", "category": "timetable", "description": "Rozvrh minulého týdne"},
+        {"name": "timetable:next", "category": "timetable", "description": "Rozvrh příštího týdne"},
+        {"name": "timetable:notes", "category": "timetable", "description": "Probraná látka tento týden"},
+        {"name": "timetable:notes:last", "category": "timetable", "description": "Probraná látka minulý týden"},
         {"name": "marks", "category": "marks", "description": "Všechny známky se průměry"},
         {"name": "marks:new", "category": "marks", "description": "Pouze nové známky"},
         {"name": "komens", "category": "komens", "description": "Posledních 20 zpráv"},

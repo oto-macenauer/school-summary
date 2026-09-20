@@ -200,7 +200,9 @@ prompts:
   #   {date_from}        - week start date (DD.MM.YYYY)
   #   {date_to}          - week end date (DD.MM.YYYY)
   #   {messages}         - formatted komens messages from the period
-  #   {timetable}        - formatted timetable for the week
+  #   {timetable}        - formatted timetable for the week, with the lesson
+  #                        themes (what teachers recorded as taught) per day
+  #   {lesson_notes}     - only the lesson themes recorded for the week
   #   {marks}            - new marks received during the period
   #   {gdrive_report}    - weekly report text from Google Drive (if available)
   summary: |
@@ -212,6 +214,9 @@ prompts:
     Rozvrh:
     {timetable}
 
+    Probraná látka (zápisy učitelů):
+    {lesson_notes}
+
     Nové známky:
     {marks}
 
@@ -219,7 +224,7 @@ prompts:
     {gdrive_report}
 
     Vytvoř stručné shrnutí v češtině. Zaměř se na důležité události,
-    testy, úkoly a změny v rozvrhu.
+    testy, úkoly, změny v rozvrhu a na to, co se ve škole probíralo.
 
   # ── Weekly Summary System Instruction ──
   summary_system: |

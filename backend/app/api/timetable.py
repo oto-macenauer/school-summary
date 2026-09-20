@@ -14,6 +14,9 @@ async def get_timetable(name: str, date: date | None = Query(None)):
     """Get current or specific week timetable."""
     ctx = get_student_or_404(name)
     if date:
+        for cached in (ctx.timetable, ctx.timetable_last, ctx.timetable_next):
+            if cached and cached.covers(date):
+                return cached.to_summary_dict()
         timetable = await ctx.timetable_module.get_actual_timetable(date)
         return timetable.to_summary_dict()
     if ctx.timetable:

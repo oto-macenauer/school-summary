@@ -18,6 +18,7 @@ from app.modules.summary import (
     get_next_week_range,
 )
 from app.modules.tagging import MessageTags, TemporalTag
+from app.modules.timetable import DayType, Lesson, TimetableDay, WeekTimetable
 from app.storage.tag_storage import TagStorage
 
 
@@ -317,3 +318,109 @@ class TestSummaryModuleTemporalTags:
             path, date(2026, 3, 23), date(2026, 3, 29),
         )
         assert result3 is None
+
+
+def _lesson_with_theme(abbrev: str, name: str, theme: str | None) -> Lesson:
+    return Lesson(
+        subject_id="s1", subject_name=name, subject_abbrev=abbrev,
+        teacher_id=None, teacher_name=None, teacher_abbrev=None,
+        room_id=None, room_name=None, room_abbrev=None,
+        hour_id="1", begin_time="08:00", end_time="08:45",
+        theme=theme, group_abbrev=None,
+        change_description=None, is_changed=False,
+    )
+
+
+def _week_with_notes() -> WeekTimetable:
+    """Monday with two recorded themes, Tuesday with none, Wednesday a holiday."""
+    return WeekTimetable(days=[
+        TimetableDay(
+            date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[
+                _lesson_with_theme("M", "Matematika", "Sčítání do 100"),
+                _lesson_with_theme("ČJ", "Čeština", "Vyjmenovaná slova"),
+            ],
+        ),
+        TimetableDay(
+            date=date(2026, 9, 22), day_type=DayType.WORK_DAY, day_description=None,
+            lessons=[_lesson_with_theme("AJ", "Angličtina", None)],
+        ),
+        TimetableDay(
+            date=date(2026, 9, 23), day_type=DayType.HOLIDAY,
+            day_description="Ředitelské volno", lessons=[],
+        ),
+    ])
+
+
+class TestFormatTimetableNotes:
+    """Tests for lesson themes in the formatted timetable."""
+
+    def test_notes_included_by_default(self):
+        """Test that recorded themes are listed under their day."""
+        module = SummaryModule(None, "Test")
+        text = module.format_timetable(_week_with_notes())
+
+        assert "Pondělí (21.09.): M, ČJ" in text
+        assert "· probráno – M: Sčítání do 100" in text
+        assert "· probráno – ČJ: Vyjmenovaná slova" in text
+
+    def test_notes_can_be_disabled(self):
+        """Test that themes can be left out."""
+        module = SummaryModule(None, "Test")
+        text = module.format_timetable(_week_with_notes(), include_notes=False)
+
+        assert "Pondělí (21.09.): M, ČJ" in text
+        assert "probráno" not in text
+
+    def test_non_school_day_unchanged(self):
+        """Test that non-school days keep their description."""
+        module = SummaryModule(None, "Test")
+        text = module.format_timetable(_week_with_notes())
+
+        assert "- Středa: Ředitelské volno" in text
+
+    def test_format_lesson_notes(self):
+        """Test the standalone notes block."""
+        module = SummaryModule(None, "Test")
+        text = module.format_lesson_notes(_week_with_notes())
+
+        assert "- Pondělí (21.09.):" in text
+        assert "· M: Sčítání do 100" in text
+        assert "· ČJ: Vyjmenovaná slova" in text
+        # Days without themes are skipped
+        assert "Úterý" not in text
+
+    def test_format_lesson_notes_empty(self):
+        """Test the notes block when no theme was recorded."""
+        module = SummaryModule(None, "Test")
+        week = WeekTimetable(days=[
+            TimetableDay(
+                date=date(2026, 9, 21), day_type=DayType.WORK_DAY, day_description=None,
+                lessons=[_lesson_with_theme("M", "Matematika", None)],
+            ),
+        ])
+        assert module.format_lesson_notes(week) == "Učitelé zatím nezapsali probranou látku."
+
+    def test_format_lesson_notes_no_timetable(self):
+        """Test the notes block without a timetable."""
+        module = SummaryModule(None, "Test")
+        assert module.format_lesson_notes(None) == "Poznámky k hodinám nejsou k dispozici."
+
+    def test_prompt_template_lesson_notes_variable(self):
+        """Test that {lesson_notes} is filled in prompt templates."""
+        module = SummaryModule(None, "Test")
+        prompt = module.build_prompt_from_template(
+            template=(
+                "Rozvrh:\n{timetable}\n\nProbrano:\n{lesson_notes}"
+            ),
+            messages=[],
+            timetable=_week_with_notes(),
+            marks=[],
+            week_start=date(2026, 9, 21),
+            week_end=date(2026, 9, 27),
+            week_type="last",
+        )
+
+        assert "Probrano:" in prompt
+        assert "· M: Sčítání do 100" in prompt
+        assert "· probráno – ČJ: Vyjmenovaná slova" in prompt
