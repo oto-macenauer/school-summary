@@ -6,6 +6,7 @@ import logging
 import re
 from datetime import date, datetime, timedelta
 
+from ..modules.marks import MarksData
 from ..services.student_manager import StudentContext
 
 _LOGGER = logging.getLogger("bakalari.prompt_variables")

@@ -5,12 +5,10 @@ from __future__ import annotations
 import tempfile
 from datetime import datetime
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import pytest
 
 from app.modules.komens import (
-    Attachment,
     LifetimeType,
     Message,
     MessagesData,

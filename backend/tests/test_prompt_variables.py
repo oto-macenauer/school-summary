@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import date, datetime, timedelta
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
 from app.modules.marks import Mark, MarksData, SubjectMarks
-from app.modules.komens import Message, MessagesData, Sender
-from app.modules.summary import SummaryData, SummaryModule, MessageSummary
+from app.modules.summary import SummaryData, SummaryModule
 from app.modules.prepare import PrepareData, PrepareModule
 from app.modules.timetable import DayType, Lesson, TimetableDay, WeekTimetable
 from app.services.prompt_variables import (

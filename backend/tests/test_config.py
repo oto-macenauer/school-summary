@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
-from app.config import load_config, generate_default_config, get_config_path, _DEFAULT_CONFIG_YAML
+from app.config import load_config, generate_default_config, _DEFAULT_CONFIG_YAML
 from app.models.config import (
     AppConfig,
     GDriveConfig,

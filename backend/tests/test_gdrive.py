@@ -7,14 +7,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.core.gdrive import (
-    GDRIVE_FILES_ENDPOINT,
-    GOOGLE_DOCS_MIME,
-    GOOGLE_TOKEN_ENDPOINT,
     FolderInfo,
     GoogleDriveAuthError,
     GoogleDriveClient,
     GoogleDriveError,
-    GoogleDriveNotFoundError,
     WeeklyReport,
     get_school_week_number,
     get_school_year_start,

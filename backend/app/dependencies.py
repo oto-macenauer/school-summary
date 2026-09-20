@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from fastapi import HTTPException
 
-from .services.log_manager import LogManager, get_log_manager
 from .services.push_service import PushService
 from .services.scheduler import BackgroundScheduler
 from .services.student_manager import StudentContext, StudentManager

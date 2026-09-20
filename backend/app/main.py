@@ -22,7 +22,7 @@ _LOGGER = logging.getLogger("bakalari.system")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup and shutdown logic."""
-    log_manager = setup_logging()
+    setup_logging()
     _LOGGER.info("Starting Školní přehled application")
 
     # Generate default config if needed

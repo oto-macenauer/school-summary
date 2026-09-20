@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from app.modules.tagging import (
-    BATCH_SIZE,
     MessageTags,
     TaggableMessage,
     TaggingModule,

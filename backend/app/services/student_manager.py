@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
-from typing import Any
 
 import aiohttp
 
@@ -18,7 +17,7 @@ from ..models.config import AppConfig, StudentConfig
 from ..modules.canteen import CanteenData, CanteenModule
 from ..modules.komens import KomensModule, MessagesData
 from ..modules.marks import MarksData, MarksModule
-from ..modules.prepare import PrepareData, PrepareModule, get_next_school_day, get_tomorrow
+from ..modules.prepare import PrepareData, PrepareModule
 from ..modules.summary import SummaryData, SummaryModule
 from ..modules.timetable import TimetableModule, WeekTimetable
 from ..storage.ai_storage import AIStorage

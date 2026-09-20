@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from unittest.mock import patch
 
 import pytest
 
@@ -31,8 +30,7 @@ class TestDataCache:
         """Test that expired entries return None."""
         cache.set("key1", "value1", ttl=1)
 
-        # Patch time.monotonic to simulate expiry
-        original_monotonic = time.monotonic
+        # Force the entry past its expiry
         cache._store["key1"].expires_at = time.monotonic() - 1
 
         assert cache.get("key1") is None

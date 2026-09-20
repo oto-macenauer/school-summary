@@ -277,7 +277,6 @@ class TestBakalariAuthIntegration:
 
         try:
             await auth.login()
-            old_token = auth.token_data.access_token
 
             new_token_data = await auth.refresh_token()
 
