@@ -91,7 +91,8 @@ bakalari-app/
 │   │       ├── timetable_response.json
 │   │       ├── marks_response.json
 │   │       └── komens_response.json
-│   ├── requirements.txt
+│   ├── pyproject.toml                # uv project (deps + pytest config)
+│   ├── uv.lock
 │   └── Dockerfile
 ├── frontend/                         # Vue 3 application
 │   ├── src/
@@ -709,10 +710,11 @@ services:
 ### Backend Dockerfile
 
 ```dockerfile
-FROM python:3.12-slim
+FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 WORKDIR /app
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy UV_PROJECT_ENVIRONMENT=/usr/local
+COPY pyproject.toml uv.lock ./
+RUN uv sync --locked --no-dev --no-install-project
 COPY app/ ./app/
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
