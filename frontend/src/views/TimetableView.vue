@@ -217,18 +217,37 @@ watch(weekOffset, load)
   justify-content: space-between;
   gap: var(--space-md);
   flex-wrap: wrap;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .week-nav {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-xs);
   margin-bottom: var(--space-md);
+  max-width: 100%;
+}
+.week-nav .glass-btn { min-height: 40px; }
+
+.week-label {
+  min-width: 7.5rem;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.week-label { min-width: 7.5rem; }
-
-.table-wrap { overflow-x: auto; }
+/* The week grid is intentionally wider than a phone: it scrolls inside this
+   box so the page itself never does. */
+.table-wrap {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
 
 .tt-table {
   width: 100%;
@@ -245,7 +264,7 @@ watch(weekOffset, load)
 .tt-th--time { width: 3.5rem; }
 
 .tt-day-name { font-size: var(--font-size-base); }
-.tt-day-date { font-size: var(--font-size-xs); color: var(--text-muted); font-weight: var(--font-weight-normal); }
+.tt-day-date { font-size: var(--font-size-xs); color: var(--text-secondary); font-weight: var(--font-weight-normal); }
 
 .tt-row:not(:last-child) .tt-time,
 .tt-row:not(:last-child) .tt-cell {
@@ -254,7 +273,7 @@ watch(weekOffset, load)
 
 .tt-time {
   padding: var(--space-sm) var(--space-md);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: var(--font-size-sm);
   text-align: right;
   white-space: nowrap;
@@ -265,6 +284,8 @@ watch(weekOffset, load)
   padding: var(--space-sm) var(--space-md);
   vertical-align: top;
   min-width: 7rem;
+  max-width: 14rem;
+  overflow-wrap: anywhere;
 }
 
 .tt-lesson {
@@ -283,9 +304,18 @@ watch(weekOffset, load)
   border-left: 2px solid var(--accent);
 }
 
-.tt-subject { font-weight: var(--font-weight-medium); display: block; }
+.tt-subject { font-weight: var(--font-weight-medium); display: block; overflow-wrap: break-word; hyphens: auto; }
 .tt-room { font-size: var(--font-size-xs); color: var(--text-secondary); display: block; }
-.tt-change { font-size: var(--font-size-xs); color: var(--warning); display: block; }
+.tt-change {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--font-size-xs);
+  color: var(--warning-text);
+  overflow-wrap: anywhere;
+}
 
 .tt-note {
   display: -webkit-box;
@@ -311,7 +341,7 @@ watch(weekOffset, load)
 
 .notes-day-head {
   font-size: var(--font-size-sm);
-  color: var(--text-muted);
+  color: var(--text-secondary);
   margin-bottom: var(--space-xs);
 }
 
@@ -319,7 +349,9 @@ watch(weekOffset, load)
 
 .notes-item {
   display: flex;
-  gap: var(--space-sm);
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  max-width: 100%;
   padding: 2px 0;
   font-size: var(--font-size-sm);
   overflow-wrap: anywhere;
@@ -327,9 +359,18 @@ watch(weekOffset, load)
 
 .notes-subject {
   flex: 0 0 3.5rem;
-  color: var(--accent);
+  color: var(--accent-text);
   font-weight: var(--font-weight-medium);
 }
 
-.notes-text { flex: 1; color: var(--text-secondary); }
+.notes-text { flex: 1 1 10rem; min-width: 0; color: var(--text-secondary); overflow-wrap: anywhere; }
+
+@media (max-width: 768px) {
+  .page-head { align-items: flex-start; }
+  .week-nav { width: 100%; }
+  .week-label { flex: 1 1 auto; min-width: 0; }
+  .tt-th, .tt-time, .tt-cell { padding: var(--space-xs) var(--space-sm); }
+  .tt-cell { min-width: 7rem; max-width: 11rem; }
+  .tt-th--time { width: 2.75rem; }
+}
 </style>

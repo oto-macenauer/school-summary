@@ -61,12 +61,16 @@ function dismiss() {
 <style scoped>
 .pwa-update {
   position: fixed;
-  bottom: var(--space-lg);
+  bottom: max(var(--space-lg), env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-md);
+  justify-content: center;
+  gap: var(--space-sm) var(--space-md);
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--page-gutter));
   padding: var(--space-md) var(--space-lg);
   background: var(--bg-secondary);
   border: 1px solid var(--glass-border);
@@ -80,7 +84,8 @@ function dismiss() {
 }
 .pwa-update__actions { display: flex; align-items: center; gap: var(--space-sm); }
 .pwa-update__btn {
-  background: var(--accent);
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
   color: #fff;
   padding: var(--space-xs) var(--space-md);
   font-size: var(--font-size-sm);
@@ -88,12 +93,13 @@ function dismiss() {
 .pwa-update__dismiss {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 1.2rem;
+  line-height: 1;
   cursor: pointer;
-  padding: 0 var(--space-xs);
+  padding: var(--space-xs);
 }
-.pwa-update__dismiss:hover { color: var(--text-secondary); }
+.pwa-update__dismiss:hover { color: var(--text-primary); }
 
 .slide-enter-active, .slide-leave-active { transition: all 0.3s ease; }
 .slide-enter-from, .slide-leave-to { transform: translateX(-50%) translateY(100%); opacity: 0; }

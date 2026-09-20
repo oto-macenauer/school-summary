@@ -23,7 +23,7 @@ const renderedText = computed(() => {
 </template>
 
 <style scoped>
-.prepare__text { font-size: var(--font-size-base); line-height: 1.6; }
+.prepare__text { font-size: var(--font-size-base); line-height: 1.6; max-width: 100%; overflow-wrap: anywhere; }
 .prepare__text :deep(p) { margin: 0 0 0.5em; }
 .prepare__text :deep(ul),
 .prepare__text :deep(ol) { margin: 0.25em 0; padding-left: 1.5em; }

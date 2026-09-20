@@ -61,7 +61,7 @@ const dateRange = computed(() => {
 </template>
 
 <style scoped>
-.summary-tabs { display: flex; gap: var(--space-xs); margin-bottom: var(--space-md); }
+.summary-tabs { display: flex; flex-wrap: wrap; gap: var(--space-xs); margin-bottom: var(--space-md); max-width: 100%; }
 .summary-tabs__btn {
   padding: var(--space-xs) var(--space-md);
   border-radius: var(--radius-sm);
@@ -72,19 +72,19 @@ const dateRange = computed(() => {
   cursor: pointer;
   transition: all var(--transition);
 }
-.summary-tabs__btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.04); }
+.summary-tabs__btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
 .summary-tabs__btn--active {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.08);
-  border-color: rgba(255,255,255,0.15);
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(165, 180, 252, 0.5);
 }
-.summary__text { font-size: var(--font-size-base); line-height: 1.6; }
+.summary__text { font-size: var(--font-size-base); line-height: 1.6; max-width: 100%; overflow-wrap: anywhere; }
 .summary__text :deep(p) { margin: 0 0 0.5em; }
 .summary__text :deep(ul),
 .summary__text :deep(ol) { margin: 0.25em 0; padding-left: 1.5em; }
 .summary__text :deep(li) { margin: 0.15em 0; }
 .summary__text :deep(li > ol) { list-style-type: none; padding-left: 0; }
 .summary__text :deep(strong) { font-weight: 600; }
-.summary__meta { display: block; margin-top: var(--space-md); font-size: var(--font-size-xs); color: var(--text-muted); }
+.summary__meta { display: block; margin-top: var(--space-md); font-size: var(--font-size-xs); color: var(--text-muted); overflow-wrap: anywhere; }
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }
 </style>

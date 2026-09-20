@@ -110,21 +110,22 @@ const groupedLessons = computed<GroupedLesson[]>(() => {
 <style scoped>
 .lessons { display: flex; flex-direction: column; gap: var(--space-xs); }
 .lesson {
-  display: flex; align-items: center; gap: var(--space-sm);
+  display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-xs) var(--space-sm);
+  max-width: 100%;
   padding: var(--space-sm) 0;
   border-bottom: var(--border-subtle);
   font-size: var(--font-size-base);
 }
 .lesson:last-child { border-bottom: none; }
-.lesson__time { color: var(--text-muted); font-size: var(--font-size-sm); min-width: 3.5rem; }
-.lesson__name { font-weight: var(--font-weight-medium); flex: 1; }
-.lesson__room { color: var(--text-secondary); font-size: var(--font-size-sm); }
+.lesson__time { color: var(--text-secondary); font-size: var(--font-size-sm); min-width: 3.5rem; flex-shrink: 0; }
+.lesson__name { font-weight: var(--font-weight-medium); flex: 1 1 6rem; min-width: 0; overflow-wrap: anywhere; }
+.lesson__room { color: var(--text-secondary); font-size: var(--font-size-sm); flex-shrink: 0; }
 .lesson--changed {
-  background: rgba(245, 158, 11, 0.05);
+  background: rgba(245, 158, 11, 0.08);
   border-radius: var(--radius-xs);
   padding: var(--space-sm);
 }
-.lesson--extra .lesson__name { color: var(--accent); }
-.lesson--extra .lesson__time { color: var(--accent); opacity: 0.7; }
+.lesson--extra .lesson__name { color: var(--accent-text); }
+.lesson--extra .lesson__time { color: var(--accent-text); }
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }
 </style>

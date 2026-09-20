@@ -95,8 +95,10 @@ onMounted(load)
 .day-header {
   display: flex;
   align-items: baseline;
-  gap: var(--space-sm);
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
   margin-bottom: var(--space-md);
+  max-width: 100%;
 }
 
 .day-name {
@@ -118,11 +120,12 @@ onMounted(load)
 
 .meal {
   display: grid;
-  grid-template-columns: 7rem 1fr auto;
+  grid-template-columns: 7rem minmax(0, 1fr) auto;
   gap: var(--space-sm);
   align-items: baseline;
   padding: var(--space-sm) 0;
   border-bottom: var(--border-subtle);
+  max-width: 100%;
 }
 .meal:last-child { border-bottom: none; }
 
@@ -135,18 +138,21 @@ onMounted(load)
 .meal__name {
   font-size: var(--font-size-sm);
   color: var(--text-primary);
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .meal__allergens {
   display: flex;
   gap: 3px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
 .allergen {
   font-size: var(--font-size-xs);
-  color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.1);
   padding: 1px 5px;
   border-radius: var(--radius-xs);
   white-space: nowrap;
@@ -159,12 +165,12 @@ onMounted(load)
 
 @media (max-width: 768px) {
   .meal {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     gap: 2px;
   }
   .meal__type {
     font-size: var(--font-size-xs);
-    color: var(--text-muted);
+    color: var(--text-secondary);
   }
   .meal__allergens {
     margin-top: 2px;

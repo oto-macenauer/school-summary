@@ -42,7 +42,7 @@ function truncate(text: string, max: number): string {
 
 <style scoped>
 .komens-header { margin-bottom: var(--space-sm); }
-.messages { display: flex; flex-direction: column; gap: var(--space-xs); }
+.messages { display: flex; flex-direction: column; gap: var(--space-xs); max-width: 100%; }
 .msg {
   display: block;
   padding: var(--space-sm) 0;
@@ -53,12 +53,28 @@ function truncate(text: string, max: number): string {
   transition: background var(--transition);
 }
 .msg:last-child { border-bottom: none; }
-.msg:hover { background: rgba(255, 255, 255, 0.02); }
+.msg:hover { background: rgba(255, 255, 255, 0.05); text-decoration: none; }
 .msg--unread .msg__title { font-weight: var(--font-weight-semibold); }
-.msg__top { display: flex; justify-content: space-between; align-items: baseline; }
-.msg__title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.msg__top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-sm); min-width: 0; }
+.msg__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .msg__date { color: var(--text-muted); font-size: var(--font-size-xs); flex-shrink: 0; margin-left: var(--space-sm); }
-.msg__sender { color: var(--text-secondary); font-size: var(--font-size-sm); display: block; margin-top: 2px; }
-.msg__preview { color: var(--text-muted); font-size: var(--font-size-sm); margin-top: var(--space-xs); line-height: 1.4; }
+.msg__sender {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg__preview {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  margin-top: var(--space-xs);
+  line-height: 1.4;
+  /* Previews come straight from Komens/mail bodies — break anything */
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }
 </style>

@@ -94,13 +94,22 @@ watch(() => store.current, load)
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-sm);
+  min-width: 0;
+  max-width: 100%;
 }
 
-.subject-info { display: flex; align-items: baseline; gap: var(--space-sm); }
-.subject-name { font-size: var(--font-size-base); }
-.subject-meta { color: var(--text-muted); font-size: var(--font-size-sm); }
+.subject-info {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
+  min-width: 0;
+}
+.subject-name { font-size: var(--font-size-base); overflow-wrap: anywhere; }
+.subject-meta { color: var(--text-muted); font-size: var(--font-size-sm); white-space: nowrap; }
 
-.subject-right { display: flex; align-items: center; gap: var(--space-md); }
+.subject-right { display: flex; align-items: center; gap: var(--space-md); flex-shrink: 0; }
 .subject-avg {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
@@ -125,7 +134,8 @@ watch(() => store.current, load)
 
 .mark-row {
   display: grid;
-  grid-template-columns: 5rem 2.5rem 2rem 1fr auto;
+  grid-template-columns: 5rem 2.5rem 2rem minmax(0, 1fr) auto;
+  max-width: 100%;
   gap: var(--space-sm);
   align-items: baseline;
   padding: var(--space-sm) 0;
@@ -141,7 +151,7 @@ watch(() => store.current, load)
   color: var(--text-primary);
   text-align: center;
 }
-.mark-grade--new { color: var(--accent); }
+.mark-grade--new { color: var(--accent-text); }
 .mark-weight {
   color: var(--text-muted);
   font-size: var(--font-size-xs);
@@ -149,6 +159,7 @@ watch(() => store.current, load)
 }
 .mark-caption {
   color: var(--text-secondary);
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -157,6 +168,8 @@ watch(() => store.current, load)
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .marks-empty {
@@ -169,8 +182,11 @@ watch(() => store.current, load)
 
 @media (max-width: 768px) {
   .mark-row {
-    grid-template-columns: 4rem 2rem 1.5rem 1fr;
+    grid-template-columns: 4rem 2rem 1.5rem minmax(0, 1fr);
+    gap: var(--space-xs);
   }
   .mark-type { display: none; }
+  .mark-caption { white-space: normal; overflow-wrap: anywhere; }
+  .subject-header { flex-wrap: wrap; }
 }
 </style>

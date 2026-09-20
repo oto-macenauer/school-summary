@@ -47,10 +47,11 @@ async function toggle() {
 .notification-bell {
   position: relative;
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: var(--radius-sm);
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
@@ -58,18 +59,18 @@ async function toggle() {
   cursor: pointer;
   transition: all var(--transition);
 }
-.notification-bell:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
-.notification-bell--active { color: var(--accent); }
-.notification-bell--denied { opacity: 0.4; cursor: not-allowed; }
+.notification-bell:hover { color: var(--text-primary); background: rgba(255,255,255,0.12); }
+.notification-bell--active { color: var(--accent-text); }
+.notification-bell--denied { color: var(--text-muted); cursor: not-allowed; }
 .notification-bell:disabled { pointer-events: none; }
 
 .notification-bell__dot {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 7px;
+  right: 7px;
   width: 7px;
   height: 7px;
-  background: var(--accent);
+  background: var(--accent-text);
   border-radius: 50%;
 }
 </style>

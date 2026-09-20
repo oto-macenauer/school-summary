@@ -228,28 +228,45 @@ watch(() => store.current, loadVariables)
 </template>
 
 <style scoped>
-.prompt-page { padding: var(--space-lg) var(--space-xl); height: calc(100vh - 4rem); display: flex; flex-direction: column; box-sizing: border-box; }
+.prompt-page {
+  /* No page padding here — AppLayout already owns the gutter; doubling it
+     was pushing the grid past the viewport on small screens. */
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  max-width: 100%;
+}
 .page-title { flex-shrink: 0; }
 
 .prompt-layout {
   display: grid;
-  grid-template-columns: 1fr 280px;
+  grid-template-columns: minmax(0, 1fr) 280px;
   gap: var(--space-lg);
   flex: 1;
   min-height: 0;
+  max-width: 100%;
 }
-@media (max-width: 900px) { .prompt-layout { grid-template-columns: 1fr; } }
+@media (max-width: 900px) {
+  .prompt-layout { grid-template-columns: minmax(0, 1fr); }
+}
 
 .prompt-main {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  max-width: 100%;
 }
 
 /* Chat messages container */
 .chat-container {
   flex: 1;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 16rem;
+  max-height: calc(100dvh - 18rem);
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: var(--space-md);
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--glass-border);
@@ -262,6 +279,7 @@ watch(() => store.current, loadVariables)
   flex-direction: column;
   gap: var(--space-md);
   min-height: 100%;
+  max-width: 100%;
 }
 
 .chat-empty {
@@ -278,20 +296,22 @@ watch(() => store.current, loadVariables)
 /* Chat bubbles */
 .chat-bubble {
   max-width: 85%;
+  min-width: 0;
   padding: var(--space-sm) var(--space-md);
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
+  overflow-wrap: anywhere;
 }
 
 .chat-bubble--user {
   align-self: flex-end;
-  background: rgba(99, 102, 241, 0.08);
-  border-color: rgba(99, 102, 241, 0.2);
+  background: rgba(99, 102, 241, 0.16);
+  border-color: rgba(129, 140, 248, 0.4);
 }
 
 .chat-bubble--assistant {
   align-self: flex-start;
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.07);
 }
 
 .chat-bubble--loading {
@@ -314,6 +334,9 @@ watch(() => store.current, loadVariables)
 .chat-bubble__content {
   font-size: var(--font-size-base);
   line-height: 1.6;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .chat-bubble__content--user {
@@ -351,13 +374,15 @@ watch(() => store.current, loadVariables)
 
 .chat-input__row {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-sm);
   align-items: flex-end;
+  max-width: 100%;
 }
 
-.chat-input__row .prompt-textarea { flex: 1; }
+.chat-input__row .prompt-textarea { flex: 1 1 12rem; min-width: 0; }
 
-.chat-send-btn { flex-shrink: 0; align-self: flex-end; }
+.chat-send-btn { flex: 0 0 auto; align-self: flex-end; min-height: 40px; }
 
 .chat-input__actions { display: flex; justify-content: flex-start; }
 
@@ -374,17 +399,18 @@ watch(() => store.current, loadVariables)
   resize: vertical;
   box-sizing: border-box;
 }
-.prompt-textarea:focus {
+.prompt-textarea:focus-visible {
   outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 2px rgba(165, 180, 252, 0.4);
 }
 .prompt-textarea--sm { min-height: 3rem; font-size: var(--font-size-sm); }
 
 .prompt-toggle { font-size: var(--font-size-sm); }
 
 .prompt-error {
-  color: var(--error);
+  color: var(--error-text);
+  overflow-wrap: anywhere;
   font-size: var(--font-size-base);
   padding: var(--space-md);
   background: rgba(239, 68, 68, 0.08);
@@ -394,7 +420,7 @@ watch(() => store.current, loadVariables)
 }
 
 /* Sidebar */
-.prompt-sidebar { overflow-y: auto; }
+.prompt-sidebar { min-width: 0; max-width: 100%; overflow-y: auto; }
 
 .prompt-sidebar__hint {
   font-size: var(--font-size-xs);
@@ -410,10 +436,13 @@ watch(() => store.current, loadVariables)
   color: var(--text-secondary);
   margin-bottom: var(--space-xs);
 }
-.var-group__items { display: flex; flex-wrap: wrap; gap: 4px; }
+.var-group__items { display: flex; flex-wrap: wrap; gap: 4px; max-width: 100%; }
 .var-chip {
   display: inline-block;
-  padding: 2px 8px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 4px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--glass-border);
   background: rgba(255,255,255,0.04);
@@ -426,8 +455,14 @@ watch(() => store.current, loadVariables)
 }
 .var-chip:hover {
   color: var(--text-primary);
-  background: rgba(99, 102, 241, 0.12);
-  border-color: var(--accent);
+  background: rgba(99, 102, 241, 0.24);
+  border-color: var(--accent-text);
+}
+
+@media (max-width: 900px) {
+  .chat-container { max-height: none; min-height: 12rem; }
+  .chat-bubble { max-width: 100%; }
+  .chat-send-btn { flex: 1 1 100%; }
 }
 
 .empty { color: var(--text-muted); font-size: var(--font-size-sm); }

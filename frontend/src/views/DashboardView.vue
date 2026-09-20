@@ -43,6 +43,8 @@ watch(() => studentStore.current, reload)
 .dashboard {
   position: relative;
   min-height: calc(100vh - 4rem);
+  max-width: 100%;
+  min-width: 0;
 }
 
 .dashboard__bg {
@@ -59,14 +61,18 @@ watch(() => studentStore.current, reload)
 .dashboard__content {
   position: relative;
   z-index: 1;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-lg);
+  max-width: 100%;
 }
-@media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-.error { color: var(--error); font-size: var(--font-size-base); }
+.grid > * { min-width: 0; max-width: 100%; }
+@media (max-width: 900px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+.error { color: var(--error-text); font-size: var(--font-size-base); overflow-wrap: anywhere; }
 .empty { color: var(--text-muted); text-align: center; padding: 3rem; font-size: var(--font-size-base); }
 </style>

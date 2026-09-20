@@ -31,14 +31,18 @@ defineProps<{ data: MarksData | null }>()
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-xs) var(--space-sm);
   margin-bottom: var(--space-sm);
+  max-width: 100%;
 }
 .average { font-size: var(--font-size-base); color: var(--text-secondary); }
 .average strong { color: var(--text-primary); }
 .subjects { display: flex; flex-direction: column; }
 .subject {
   display: grid;
-  grid-template-columns: 1fr 3rem 3.5rem;
+  grid-template-columns: minmax(0, 1fr) 3rem 3.5rem;
+  max-width: 100%;
   align-items: center;
   gap: var(--space-sm);
   padding: var(--space-sm) 0;
@@ -46,7 +50,7 @@ defineProps<{ data: MarksData | null }>()
   border-bottom: var(--border-subtle);
 }
 .subject:last-child { border-bottom: none; }
-.subject__name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subject__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .subject__new { text-align: center; }
 .subject__avg { color: var(--text-secondary); font-weight: var(--font-weight-medium); text-align: right; }
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }

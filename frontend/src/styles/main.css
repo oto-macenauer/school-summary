@@ -1,19 +1,36 @@
 :root {
+  color-scheme: dark;
+
   /* Colors */
   --bg-primary: #0a0e1a;
   --bg-secondary: #111827;
   --bg-dashboard: #070b14;
   --glass-bg: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-border: rgba(255, 255, 255, 0.16);
   --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  --text-primary: rgba(255, 255, 255, 0.92);
-  --text-secondary: rgba(255, 255, 255, 0.6);
-  --text-muted: rgba(255, 255, 255, 0.35);
+
+  /* Text — all values verified >= 4.5:1 against the app backgrounds (WCAG AA) */
+  --text-primary: rgba(255, 255, 255, 0.95);
+  --text-secondary: rgba(255, 255, 255, 0.72);
+  --text-muted: rgba(255, 255, 255, 0.58);
+
+  /* Accent: --accent is for fills/borders, --accent-text for text on dark,
+     --accent-strong for surfaces carrying white text. */
   --accent: #6366f1;
+  --accent-text: #a5b4fc;
+  --accent-strong: #4f46e5;
   --accent-glow: rgba(99, 102, 241, 0.3);
+  --accent-soft: rgba(99, 102, 241, 0.18);
+
+  /* Status: *-text variants are the ones safe to put on dark surfaces */
   --success: #22c55e;
+  --success-text: #86efac;
   --warning: #f59e0b;
+  --warning-text: #fcd34d;
   --error: #ef4444;
+  --error-text: #fca5a5;
+
+  --focus-ring: #a5b4fc;
 
   /* Typography */
   --font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -40,43 +57,136 @@
   --radius: 16px;
   --radius-sm: 10px;
   --radius-xs: 6px;
-  --border-subtle: 1px solid rgba(255, 255, 255, 0.04);
+  --border-subtle: 1px solid rgba(255, 255, 255, 0.08);
 
   /* Effects */
   --blur: 20px;
   --transition: 0.2s ease;
+
+  /* Layout */
+  --page-gutter: 1.5rem;
+  --header-height: 3.5rem;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; }
+@media (max-width: 768px) {
+  :root { --page-gutter: 0.75rem; }
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  /* Flex/grid children default to min-width:auto, which lets long words and
+     wide tables push the whole page sideways. Zero is the global default;
+     components that need a floor set one explicitly. */
+  min-width: 0;
+}
+
+html {
+  /* clip (not hidden) keeps position: sticky working on descendants */
+  overflow-x: clip;
+}
 
 body {
   font-family: var(--font-family);
   background: linear-gradient(135deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
   font-size: var(--font-size-base);
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
+  overflow-wrap: break-word;
   -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
 }
 
 #app {
   min-height: 100vh;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
-a { color: var(--accent); text-decoration: none; }
+a { color: var(--accent-text); text-decoration: none; overflow-wrap: anywhere; }
 a:hover { text-decoration: underline; }
 
+img, svg, video, canvas, iframe { max-width: 100%; height: auto; }
+
+/* Long unbroken strings (URLs, IDs, Czech compounds) must never widen a box */
+p, li, td, th, dd, dt, figcaption, blockquote, pre, code, h1, h2, h3, h4, h5, h6 {
+  overflow-wrap: anywhere;
+}
+
+/* Focus visibility (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-xs);
+}
+
+/* Form controls — native widgets must inherit the dark scheme, never render
+   dark text on a dark surface. */
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+  color: var(--text-primary);
+  max-width: 100%;
+}
+select {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+select option,
+select optgroup {
+  background-color: var(--bg-secondary);
+  color: #ffffff;
+}
+::placeholder { color: var(--text-muted); opacity: 1; }
+
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  /* Keep disabled text legible instead of fading it below AA */
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--glass-border); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.24); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.36); }
+* { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.24) transparent; }
+
+/* Horizontal scroll is allowed only inside an opted-in box, never on the page */
+.scroll-x {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
 
 /* Page titles */
 .page-title {
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   margin-bottom: var(--space-lg);
+  overflow-wrap: anywhere;
 }
 .page-title__sub {
   color: var(--text-secondary);
   font-weight: var(--font-weight-normal);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
