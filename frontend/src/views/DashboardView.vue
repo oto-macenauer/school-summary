@@ -5,6 +5,8 @@ import { useDashboardStore } from '@/stores/dashboard'
 import TimetableWidget from '@/components/widgets/TimetableWidget.vue'
 import SummaryWidget from '@/components/widgets/SummaryWidget.vue'
 import KomensWidget from '@/components/widgets/KomensWidget.vue'
+import AgendaWidget from '@/components/widgets/AgendaWidget.vue'
+import TasksWidget from '@/components/widgets/TasksWidget.vue'
 import MarksWidget from '@/components/widgets/MarksWidget.vue'
 import PrepareWidget from '@/components/widgets/PrepareWidget.vue'
 import LoadingSpinner from '@/components/ui/LoadingSpinner.vue'
@@ -29,6 +31,11 @@ watch(() => studentStore.current, reload)
       <div v-else-if="dashboard.data" class="grid">
         <TimetableWidget :data="dashboard.data.today_timetable" :extra-subjects="dashboard.data.extra_subjects" />
         <SummaryWidget :last="dashboard.data.summary_last" :current="dashboard.data.summary_current" :next="dashboard.data.summary_next" />
+        <AgendaWidget :data="dashboard.data.agenda_events" />
+        <TasksWidget
+          :data="dashboard.data.agenda_tasks"
+          :counts="dashboard.data.agenda_task_counts"
+        />
         <PrepareWidget :data="dashboard.data.prepare_today" title="Dnes" />
         <PrepareWidget :data="dashboard.data.prepare_tomorrow" title="Zítra" />
         <KomensWidget :data="dashboard.data.komens" />

@@ -18,6 +18,7 @@ from ..modules.summary import (
     get_last_week_range,
     get_next_week_range,
 )
+from ..modules.agenda import plural_cs, sort_events, sort_tasks
 from ..modules.mail_sync import sync_mail_from_gdrive
 from ..modules.prepare import PrepareData, get_tomorrow
 from ..modules.tagging import TaggableMessage, TaggingModule
@@ -169,6 +170,13 @@ class BackgroundScheduler:
                 self._schedule_task(f"mail:{name}", intervals.mail, self._refresh_mail, ctx)
             if self._manager.gemini:
                 self._schedule_task(f"tagging:{name}", intervals.tagging, self._refresh_tags, ctx)
+            if self._push_service:
+                self._schedule_task(
+                    f"agenda_digest:{name}",
+                    intervals.agenda_digest,
+                    self._agenda_digest,
+                    ctx,
+                )
 
         # Canteen is school-wide, schedule once (not per-student)
         if self._manager.canteen_module:
@@ -591,51 +599,144 @@ class BackgroundScheduler:
         _LOGGER.debug("Refreshed mail for %s", ctx.name)
 
     async def _refresh_tags(self, ctx: StudentContext) -> None:
-        """Tag untagged messages from all storage sources using Gemini."""
+        """Extract tags, calendar events and tasks from stored messages."""
         gemini = self._manager.gemini
         if not gemini:
             return
 
-        tagger = TaggingModule(gemini)
+        prompts = self._config.prompts
+        tagger = TaggingModule(
+            gemini,
+            prompt_template=prompts.tagging,
+            system_instruction=prompts.tagging_system,
+        )
 
-        # Collect untagged files from all sources
-        untagged: list[tuple[Path, str]] = []
-        for path in ctx.komens_storage.get_untagged_files():
-            untagged.append((path, "komens"))
-        for path in ctx.mail_storage.get_untagged_files():
-            untagged.append((path, "mail"))
-        for path in ctx.gdrive_storage.get_untagged_files():
-            untagged.append((path, "report"))
+        # Messages tagged by an older schema are re-processed only inside the
+        # backfill window — older history is not worth the quota.
+        backfill_days = self._config.agenda.backfill_days
+        cutoff = date.today() - timedelta(days=backfill_days) if backfill_days else None
 
-        if not untagged:
+        candidates: list[tuple[Path, str]] = []
+        for path in ctx.komens_storage.get_saved_files():
+            candidates.append((path, "komens"))
+        for path in ctx.mail_storage.get_saved_files():
+            candidates.append((path, "mail"))
+        for path in ctx.gdrive_storage.get_all_reports():
+            candidates.append((path, "report"))
+
+        if not candidates:
             return
 
         taggable: list[TaggableMessage] = []
         path_map: dict[str, Path] = {}
 
-        for path, source_type in untagged:
+        for path, source_type in candidates:
             msg = self._parse_taggable_from_file(path, source_type)
-            if msg:
-                taggable.append(msg)
-                path_map[msg.message_id] = path
+            if not msg:
+                continue
+            if not TagStorage.needs_extraction(path, msg.sent_date, cutoff):
+                continue
+            taggable.append(msg)
+            path_map[msg.message_id] = path
 
         if not taggable:
             return
 
         # Tag most recent messages first
         taggable.sort(key=lambda m: m.sent_date or date.min, reverse=True)
+        source_map = {m.message_id: m.source_id for m in taggable}
 
         results = await tagger.tag_messages(taggable)
 
         written = 0
-        for msg_id, tags in results.items():
+        events_found = 0
+        tasks_found = 0
+        for msg_id, extraction in results.items():
             path = path_map.get(msg_id)
-            if path:
-                TagStorage.write_tags(path, tags)
-                written += 1
+            if not path:
+                continue
+            TagStorage.write_tags(path, extraction.tags)
+            written += 1
+            source = source_map.get(msg_id)
+            if source:
+                # Replaces exactly this message's records; user state survives.
+                ctx.agenda_storage.replace_source(
+                    source, extraction.events, extraction.tasks,
+                )
+                events_found += len(extraction.events)
+                tasks_found += len(extraction.tasks)
 
         if written:
-            _LOGGER.info("Tagged %d messages for %s", written, ctx.name)
+            _LOGGER.info(
+                "Tagged %d messages for %s (%d events, %d tasks)",
+                written, ctx.name, events_found, tasks_found,
+            )
+            get_log_manager().log(
+                LogCategory.SCHEDULER, "INFO",
+                f"Tagged {written} messages for {ctx.name}",
+                student=ctx.name,
+                details={"events": events_found, "tasks": tasks_found},
+            )
+
+    async def _agenda_digest(self, ctx: StudentContext) -> None:
+        """Push one digest a day: tomorrow's events and tasks coming due."""
+        agenda_cfg = self._config.agenda
+        if not agenda_cfg.reminder_enabled or not self._push_service:
+            return
+
+        now = datetime.now()
+        if now.hour < agenda_cfg.reminder_hour:
+            return
+
+        today = now.date()
+        storage = ctx.agenda_storage
+        if storage.last_digest_date() == today:
+            return
+
+        tomorrow = today + timedelta(days=1)
+        state = storage.load_state()
+
+        def _active(item_id: str) -> bool:
+            entry = state.get(item_id)
+            return not (entry and (entry.done or entry.dismissed))
+
+        events = sort_events([
+            e for e in storage.load_events()
+            if _active(e.id) and e.date_from <= tomorrow <= e.date_end
+        ])
+        task_cutoff = today + timedelta(days=agenda_cfg.reminder_task_days)
+        tasks = sort_tasks([
+            t for t in storage.load_tasks()
+            if _active(t.id) and t.due is not None and t.due <= task_cutoff
+        ])
+
+        if not events and not tasks:
+            # Nothing to say — remember the day anyway so the check stays cheap.
+            storage.set_last_digest_date(today)
+            return
+
+        parts: list[str] = []
+        if events:
+            parts.append("Zítra: " + ", ".join(e.title for e in events[:3]))
+        if tasks:
+            parts.append("Nezapomeň: " + ", ".join(t.title for t in tasks[:3]))
+        body = " · ".join(parts)
+        extra = len(events[3:]) + len(tasks[3:])
+        if extra:
+            body += f" (+{extra} {plural_cs(extra, 'další', 'další', 'dalších')})"
+
+        await self._push_service.send_notification(
+            ctx.name,
+            title=f"{ctx.name} — zítřek",
+            body=body,
+            url=f"/{ctx.name.lower()}/calendar",
+            tag="agenda",
+        )
+        storage.set_last_digest_date(today)
+        _LOGGER.info(
+            "Sent agenda digest for %s (%d events, %d tasks)",
+            ctx.name, len(events), len(tasks),
+        )
 
     @staticmethod
     def _parse_taggable_from_file(

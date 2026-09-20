@@ -1,4 +1,9 @@
-"""AI-powered message tagging module using Gemini."""
+"""AI-powered message tagging and agenda extraction using Gemini.
+
+One Gemini call per batch returns both the semantic tags shown on the messages
+page and the calendar events / checklist tasks the message implies.  Keeping it
+in a single call means adding the agenda feature costs no extra quota.
+"""
 
 from __future__ import annotations
 
@@ -10,10 +15,17 @@ from datetime import date, datetime
 from typing import Any
 
 from ..core.gemini import GeminiClient
+from ..models.config import DEFAULT_TAGGING_PROMPT, DEFAULT_TAGGING_SYSTEM
+from .agenda import AgendaEvent, AgendaTask, parse_events, parse_tasks
 
 _LOGGER = logging.getLogger("bakalari.tagging")
 
 BATCH_SIZE = 5
+
+# Bumped when the extraction contract changes, so the scheduler can tell which
+# stored messages were processed by an older prompt. 1 = tags only,
+# 2 = tags + calendar events + checklist tasks.
+TAG_SCHEMA_VERSION = 2
 
 
 @dataclass
@@ -75,6 +87,15 @@ class MessageTags:
 
 
 @dataclass
+class MessageExtraction:
+    """Everything one AI pass produced for a single message."""
+
+    tags: MessageTags
+    events: list[AgendaEvent] = field(default_factory=list)
+    tasks: list[AgendaTask] = field(default_factory=list)
+
+
+@dataclass
 class TaggableMessage:
     """A message ready for AI tagging."""
 
@@ -84,24 +105,36 @@ class TaggableMessage:
     sent_date: date | None
     source_type: str  # "komens" | "mail" | "report"
 
+    @property
+    def source_id(self) -> str:
+        """Stable id shared with the resources endpoint, e.g. ``komens-1234``."""
+        return f"{self.source_type}-{self.message_id}"
+
 
 class TaggingModule:
-    """Uses Gemini to extract semantic tags from messages."""
+    """Uses Gemini to extract tags, calendar events and tasks from messages."""
 
-    def __init__(self, gemini_client: GeminiClient) -> None:
+    def __init__(
+        self,
+        gemini_client: GeminiClient,
+        prompt_template: str | None = None,
+        system_instruction: str | None = None,
+    ) -> None:
         self._gemini = gemini_client
+        self._prompt_template = prompt_template or None
+        self._system_instruction = system_instruction or None
 
     async def tag_messages(
         self, messages: list[TaggableMessage],
-    ) -> dict[str, MessageTags]:
+    ) -> dict[str, MessageExtraction]:
         """Tag a list of messages using Gemini AI.
 
-        Returns a dict mapping message_id to extracted tags.
+        Returns a dict mapping message_id to its extraction.
         """
         if not messages:
             return {}
 
-        result: dict[str, MessageTags] = {}
+        result: dict[str, MessageExtraction] = {}
 
         # Process in batches
         for i in range(0, len(messages), BATCH_SIZE):
@@ -116,7 +149,7 @@ class TaggingModule:
 
     async def _tag_batch(
         self, messages: list[TaggableMessage],
-    ) -> dict[str, MessageTags]:
+    ) -> dict[str, MessageExtraction]:
         prompt = self._build_tagging_prompt(messages)
         system = self._get_system_instruction()
 
@@ -132,48 +165,33 @@ class TaggingModule:
             _LOGGER.error("Gemini tagging request failed: %s", err)
             return {}
 
-    def _build_tagging_prompt(self, messages: list[TaggableMessage]) -> str:
-        lines = [
-            "Analyzuj následující zprávy a extrahuj z nich tagy.\n",
-            "Pro každou zprávu urči:",
-            "1. temporal - seznam dat nebo rozsahů dat, ke kterým se zpráva vztahuje",
-            "   (format: {\"from\": \"YYYY-MM-DD\", \"to\": \"YYYY-MM-DD\" nebo null, \"label\": \"popis\"})",
-            "   Pokud zpráva zmiňuje relativní datum (příští pondělí, za týden), "
-            "vyřeš ho vzhledem k datu odeslání.",
-            "   Každá zpráva musí mít alespoň 1 temporal tag (fallback: datum odeslání).",
-            "2. subjects - seznam školních předmětů zmíněných ve zprávě",
-            "3. importance - seznam kategorií: test, homework, trip, event, absence, "
-            "schedule_change, important, info\n",
-            "Zprávy:\n",
-        ]
+    @staticmethod
+    def _format_messages_block(messages: list[TaggableMessage]) -> str:
+        blocks = []
         for idx, msg in enumerate(messages, 1):
             date_str = msg.sent_date.isoformat() if msg.sent_date else "neznámo"
-            body_preview = msg.body[:800] if msg.body else ""
-            lines.append(
+            body_preview = msg.body[:1500] if msg.body else ""
+            blocks.append(
                 f"--- Zpráva {idx} (ID: {msg.message_id}, datum: {date_str}) ---\n"
                 f"Předmět: {msg.title}\n"
                 f"Obsah: {body_preview}\n"
             )
+        return "\n".join(blocks)
 
-        lines.append(
-            '\nOdpověz POUZE validním JSON objektem ve formátu:\n'
-            '{"1": {"temporal": [...], "subjects": [...], "importance": [...]}, '
-            '"2": {...}, ...}\n'
-            "Bez dalšího textu."
+    def _build_tagging_prompt(self, messages: list[TaggableMessage]) -> str:
+        template = self._prompt_template or DEFAULT_TAGGING_PROMPT
+        # Plain substitution, not str.format: the template contains a JSON
+        # schema full of braces.
+        return template.replace("{today}", date.today().isoformat()).replace(
+            "{messages}", self._format_messages_block(messages)
         )
-        return "\n".join(lines)
 
     def _get_system_instruction(self) -> str:
-        return (
-            "Jsi školní asistent, který analyzuje zprávy a extrahuje z nich strukturované tagy. "
-            "Odpovídej POUZE validním JSON. Žádný další text. "
-            "Předměty piš v češtině (Matematika, Fyzika, Český jazyk, atd.). "
-            "Kategorie importance používej z daného seznamu."
-        )
+        return self._system_instruction or DEFAULT_TAGGING_SYSTEM
 
     def _parse_response(
         self, response: str, messages: list[TaggableMessage],
-    ) -> dict[str, MessageTags]:
+    ) -> dict[str, MessageExtraction]:
         # Strip markdown code block wrapping if present
         text = response.strip()
         if text.startswith("```"):
@@ -191,7 +209,7 @@ class TaggingModule:
             _LOGGER.warning("Tagging response is not a dict")
             return {}
 
-        result: dict[str, MessageTags] = {}
+        result: dict[str, MessageExtraction] = {}
         now = datetime.now()
 
         for idx, msg in enumerate(messages, 1):
@@ -229,11 +247,19 @@ class TaggingModule:
                 i for i in entry.get("importance", []) if isinstance(i, str)
             ]
 
-            result[msg.message_id] = MessageTags(
-                temporal=temporal,
-                subjects=subjects,
-                importance=importance,
-                tagged_at=now,
+            result[msg.message_id] = MessageExtraction(
+                tags=MessageTags(
+                    temporal=temporal,
+                    subjects=subjects,
+                    importance=importance,
+                    tagged_at=now,
+                ),
+                events=parse_events(
+                    entry.get("events"), msg.source_id, msg.source_type, now,
+                ),
+                tasks=parse_tasks(
+                    entry.get("tasks"), msg.source_id, msg.source_type, now,
+                ),
             )
 
         return result

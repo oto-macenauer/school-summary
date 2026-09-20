@@ -67,9 +67,13 @@ backend/
       summary.py       # AI weekly summary with prompt templates
       prepare.py       # Today/tomorrow preparation
       canteen.py       # School canteen menu (Strava.cz API, external)
+      tagging.py       # AI tagging + calendar/task extraction (one Gemini call)
+      agenda.py        # Calendar events & checklist tasks: models + parsing
     storage/           # Markdown file persistence
       komens_storage.py
       gdrive_storage.py
+      tag_storage.py      # Tags in markdown frontmatter (+ schema version)
+      agenda_storage.py   # YAML: events.yaml, tasks.yaml, state.yaml
     services/          # Application services
       student_manager.py  # Per-student state + shared canteen state
       scheduler.py        # Background task scheduler with status tracking
@@ -77,7 +81,8 @@ backend/
       log_manager.py      # Ring buffer logger with categories
     api/               # FastAPI routers
       auth.py, timetable.py, marks.py, komens.py, canteen.py,
-      summary.py, prepare.py, dashboard.py, admin.py
+      summary.py, prepare.py, dashboard.py, admin.py,
+      resources.py, agenda.py
     models/config.py   # Pydantic config models
     config.py          # YAML config loader with prompt templates
     dependencies.py    # FastAPI dependency injection
@@ -87,7 +92,8 @@ backend/
 frontend/              # Vue 3 + TypeScript + Vite
   src/
     components/        # Layout, UI primitives, dashboard widgets
-    views/             # Dashboard, Timetable, Marks, Komens, Canteen, Admin
+    views/             # Dashboard, Timetable, Marks, Resources, Calendar,
+                       # Checklist, Canteen, Prompt, Admin
     stores/            # Pinia state management
     api/client.ts      # Typed HTTP client
     types/index.ts     # TypeScript interfaces for all API responses
@@ -100,6 +106,7 @@ frontend/              # Vue 3 + TypeScript + Vite
 - **API routers** (`backend/app/api/`): Thin — get student context via `get_student_or_404(name)`, return cached data or fetch fresh.
 - **Per-student vs shared**: Most modules are per-student (on `StudentContext`). Canteen is school-wide (on `StudentManager`), scheduled once globally.
 - **Scheduler**: `_schedule_task()` creates periodic async tasks per student. Canteen uses separate `_schedule_canteen_task()` for its global task.
+- **Agenda extraction**: the `tagging` task sends each stored message to Gemini once and gets tags + calendar events + checklist tasks back. Records are keyed by source (`komens-1234-e0`), so re-extracting a message replaces only its own records; done/dismissed state lives in `state.yaml` and survives. `TAG_SCHEMA_VERSION` in `modules/tagging.py` marks processed files — bump it to re-extract, and `agenda.backfill_days` bounds how much history that costs.
 - **Frontend views**: `<script setup lang="ts">` composition API, fetch on `onMounted` + `watch(() => store.current)`, use `GlassCard` component and CSS custom properties from the design system.
 
 ## Configuration
@@ -110,6 +117,7 @@ YAML-based config at `app_data/config.yaml` (auto-generated on first startup):
 - `gemini_api_key`: Optional, enables AI summaries
 - `gdrive`: Google Drive service account config for weekly reports
 - `canteen`: Strava.cz canteen config (`cislo`, `s5url`, `lang`) — optional, enables canteen menu
+- `agenda`: calendar/checklist windows, backfill depth, day-before push digest
 - `update_intervals`: Per-module refresh intervals in seconds
 - `prompts`: Editable AI prompt templates using `{variable}` syntax
 
@@ -186,6 +194,10 @@ backend/tests/
   test_summary.py          # Weekly summary tests
   test_prepare.py          # Today/tomorrow preparation tests
   test_canteen.py          # Canteen module tests
+  test_agenda.py           # Event/task parsing, sorting, windows
+  test_agenda_storage.py   # Agenda YAML storage + user state overlay
+  test_agenda_api.py       # Calendar/checklist endpoints (FastAPI TestClient)
+  test_agenda_extraction.py # AI extraction, schema versioning, push digest
   test_cache.py            # In-memory cache tests
   test_log_manager.py      # Log manager tests
   test_config.py           # YAML config loader tests

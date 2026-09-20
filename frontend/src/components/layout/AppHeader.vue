@@ -18,6 +18,8 @@ const navLinks = computed(() => {
     { to: `/${s}/timetable`, label: 'Rozvrh', name: 'timetable' },
     { to: `/${s}/marks`, label: 'Známky', name: 'marks' },
     { to: `/${s}/resources`, label: 'Zprávy', name: 'resources' },
+    { to: `/${s}/calendar`, label: 'Kalendář', name: 'calendar' },
+    { to: `/${s}/checklist`, label: 'Úkoly', name: 'checklist' },
     { to: `/${s}/canteen`, label: 'Jídelníček', name: 'canteen' },
     { to: `/${s}/prompt`, label: 'AI Dotaz', name: 'prompt' },
   ]

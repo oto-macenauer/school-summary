@@ -4,6 +4,81 @@ export interface ExtraSubject {
   days: string[]
 }
 
+export type AgendaEventKind =
+  | 'test'
+  | 'exam'
+  | 'homework'
+  | 'trip'
+  | 'event'
+  | 'meeting'
+  | 'holiday'
+  | 'deadline'
+
+export type AgendaTaskKind =
+  | 'pay'
+  | 'bring'
+  | 'prepare'
+  | 'buy'
+  | 'sign'
+  | 'return'
+  | 'other'
+
+/** A dated entry extracted from a message — the calendar's unit. */
+export interface AgendaEvent {
+  id: string
+  source: string
+  source_category: string
+  kind: AgendaEventKind
+  title: string
+  date_from: string
+  date_to: string | null
+  time_from: string | null
+  subject: string | null
+  location: string | null
+  note: string | null
+  extracted_at: string | null
+  done: boolean
+  done_at: string | null
+  dismissed: boolean
+}
+
+/** An actionable entry extracted from a message — the checklist's unit. */
+export interface AgendaTask {
+  id: string
+  source: string
+  source_category: string
+  kind: AgendaTaskKind
+  title: string
+  due: string | null
+  amount: number | null
+  currency: string | null
+  subject: string | null
+  note: string | null
+  extracted_at: string | null
+  done: boolean
+  done_at: string | null
+  dismissed: boolean
+}
+
+export interface AgendaTaskCounts {
+  open: number
+  overdue: number
+  due_soon: number
+}
+
+export interface AgendaEventsResponse {
+  events: AgendaEvent[]
+  today: string
+  window: { past_days: number; future_days: number; all_time: boolean }
+  total: number
+}
+
+export interface AgendaTasksResponse {
+  tasks: AgendaTask[]
+  today: string
+  counts: AgendaTaskCounts
+}
+
 export interface DashboardData {
   student: string
   today_timetable: TimetableDay | null
@@ -15,6 +90,9 @@ export interface DashboardData {
   marks: MarksData | null
   prepare_today: PrepareData | null
   prepare_tomorrow: PrepareData | null
+  agenda_events: AgendaEvent[]
+  agenda_tasks: AgendaTask[]
+  agenda_task_counts: AgendaTaskCounts
 }
 
 export interface TimetableDay {

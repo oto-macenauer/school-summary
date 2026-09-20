@@ -5,6 +5,8 @@ from datetime import date
 from fastapi import APIRouter
 
 from ..dependencies import get_manager, get_student_or_404
+from ..modules.agenda import ItemState, upcoming_events
+from .agenda import open_task_counts, task_dicts, with_state
 
 router = APIRouter(tags=["dashboard"])
 
@@ -57,6 +59,21 @@ async def get_dashboard(name: str):
             **ctx.prepare_tomorrow.to_dict(),
         }
 
+    # Agenda: the next few calendar entries and the open checklist
+    today = date.today()
+    states = ctx.agenda_storage.load_state()
+    all_events = ctx.agenda_storage.load_events()
+    all_tasks = ctx.agenda_storage.load_tasks()
+
+    agenda_events = [
+        with_state(e.to_dict(), states.get(e.id, ItemState()))
+        for e in upcoming_events(all_events, today, 30)
+        if not states.get(e.id, ItemState()).dismissed
+    ][:5]
+    open_tasks = task_dicts(
+        all_tasks, states, include_done=False, include_dismissed=False,
+    )
+
     # Extra subjects from config
     extra_subjects = []
     manager = get_manager()
@@ -78,4 +95,7 @@ async def get_dashboard(name: str):
         "marks": marks,
         "prepare_today": prepare_today,
         "prepare_tomorrow": prepare_tomorrow,
+        "agenda_events": agenda_events,
+        "agenda_tasks": open_tasks[:6],
+        "agenda_task_counts": open_task_counts(all_tasks, states, today),
     }

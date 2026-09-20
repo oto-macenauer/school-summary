@@ -8,9 +8,17 @@ import re
 from datetime import date, datetime
 from pathlib import Path
 
-from ..modules.tagging import MessageTags, TemporalTag
+from ..modules.tagging import TAG_SCHEMA_VERSION, MessageTags, TemporalTag
 
 _LOGGER = logging.getLogger("bakalari.tag_storage")
+
+_TAG_KEYS = (
+    "tags_temporal:",
+    "tags_subjects:",
+    "tags_importance:",
+    "tagged_at:",
+    "tag_schema:",
+)
 
 
 class TagStorage:
@@ -105,13 +113,14 @@ class TagStorage:
             f"tags_subjects: {subjects_json}",
             f"tags_importance: {importance_json}",
             f"tagged_at: {tagged_at_str}",
+            f"tag_schema: {TAG_SCHEMA_VERSION}",
         ]
 
         # Remove any existing tag lines first
         lines = content.split("\n")
         cleaned: list[str] = []
         for line in lines:
-            if line.startswith(("tags_temporal:", "tags_subjects:", "tags_importance:", "tagged_at:")):
+            if line.startswith(_TAG_KEYS):
                 continue
             cleaned.append(line)
         content = "\n".join(cleaned)
@@ -153,6 +162,48 @@ class TagStorage:
             return "tagged_at:" in content
         except OSError:
             return False
+
+    @staticmethod
+    def read_schema_version(file_path: Path) -> int:
+        """Return the extraction schema a file was processed with.
+
+        Files tagged before schema versioning have no ``tag_schema`` line;
+        they report 1 (tags only, no agenda extraction).
+        """
+        try:
+            content = file_path.read_text(encoding="utf-8")
+        except OSError:
+            return 0
+        if "tagged_at:" not in content:
+            return 0
+        raw = TagStorage.parse_frontmatter(content).get("tag_schema")
+        if raw is None:
+            return 1
+        try:
+            return int(raw)
+        except ValueError:
+            return 1
+
+    @staticmethod
+    def needs_extraction(
+        file_path: Path,
+        sent_date: date | None,
+        backfill_cutoff: date | None,
+    ) -> bool:
+        """Decide whether a stored message should be sent to the AI.
+
+        Never processed → always yes.  Processed by an older schema → only if
+        it is recent enough to be worth the quota: older history keeps the tags
+        it already has and contributes nothing to the calendar.
+        """
+        version = TagStorage.read_schema_version(file_path)
+        if version >= TAG_SCHEMA_VERSION:
+            return False
+        if version == 0:
+            return True
+        if backfill_cutoff is None:
+            return False
+        return sent_date is not None and sent_date >= backfill_cutoff
 
     @staticmethod
     def parse_frontmatter(content: str) -> dict[str, str]:

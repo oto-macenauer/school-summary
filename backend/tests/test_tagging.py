@@ -166,9 +166,9 @@ class TestTaggingModule:
         result = tagger._parse_response(response, sample_messages)
         assert "MSG001" in result
         assert "MSG002" in result
-        assert result["MSG001"].subjects == ["Matematika"]
-        assert "test" in result["MSG001"].importance
-        assert result["MSG001"].temporal[0].date_from == date(2026, 3, 10)
+        assert result["MSG001"].tags.subjects == ["Matematika"]
+        assert "test" in result["MSG001"].tags.importance
+        assert result["MSG001"].tags.temporal[0].date_from == date(2026, 3, 10)
 
     def test_parse_response_malformed_json(
         self, tagger: TaggingModule, sample_messages: list[TaggableMessage],
@@ -206,8 +206,8 @@ class TestTaggingModule:
         })
         result = tagger._parse_response(response, messages)
         assert "MSG_NODATE" in result
-        assert result["MSG_NODATE"].temporal[0].date_from == date(2026, 3, 1)
-        assert result["MSG_NODATE"].temporal[0].label == "datum odeslání"
+        assert result["MSG_NODATE"].tags.temporal[0].date_from == date(2026, 3, 1)
+        assert result["MSG_NODATE"].tags.temporal[0].label == "datum odeslání"
 
     @pytest.mark.asyncio
     async def test_tag_messages_success(

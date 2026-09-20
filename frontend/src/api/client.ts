@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { CanteenData, DashboardData, GDriveReport, LogEntry, MailData, PromptResponse, PromptVariable, ResourceItem, TaskStatus } from '@/types'
+import type { AgendaEventsResponse, AgendaTasksResponse, CanteenData, DashboardData, GDriveReport, LogEntry, MailData, PromptResponse, PromptVariable, ResourceItem, TaskStatus } from '@/types'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -88,6 +88,35 @@ export async function getResources(student: string): Promise<{
 }> {
   const { data } = await api.get(`/students/${student}/resources`)
   return data
+}
+
+// Agenda: calendar events and checklist tasks
+export async function getAgendaEvents(
+  student: string,
+  params: { past_days?: number; future_days?: number; all_time?: boolean } = {},
+): Promise<AgendaEventsResponse> {
+  const { data } = await api.get(`/students/${student}/agenda/events`, { params })
+  return data
+}
+
+export async function getAgendaTasks(
+  student: string,
+  params: { include_done?: boolean } = {},
+): Promise<AgendaTasksResponse> {
+  const { data } = await api.get(`/students/${student}/agenda/tasks`, { params })
+  return data
+}
+
+export async function setAgendaItemState(
+  student: string,
+  itemId: string,
+  state: { done?: boolean; dismissed?: boolean },
+) {
+  const { data } = await api.post(
+    `/students/${student}/agenda/items/${encodeURIComponent(itemId)}/state`,
+    state,
+  )
+  return data as { id: string; done: boolean; done_at: string | null; dismissed: boolean }
 }
 
 export async function reloadConfig() {

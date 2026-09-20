@@ -49,6 +49,25 @@ update_intervals:
   prepare: 3600
   canteen: 3600
   mail: 900
+  tagging: 3600
+  agenda_digest: 1800
+
+# ──────────────────────────────────────────────
+# Calendar & Checklist (agenda)
+# ──────────────────────────────────────────────
+# Events and tasks are extracted from messages by the tagging prompt below and
+# stored as YAML under app_data/agenda/<Student>/.
+agenda:
+  # How far back message history is re-processed after an extraction change.
+  # Older messages keep their tags but stay out of the calendar.
+  backfill_days: 90
+  # Rolling window the calendar shows by default.
+  past_window_days: 14
+  future_window_days: 90
+  # Daily push digest of tomorrow's events and tasks coming due.
+  reminder_enabled: true
+  reminder_hour: 18
+  reminder_task_days: 2
 
 # ──────────────────────────────────────────────
 # Prompt Templates
@@ -119,6 +138,13 @@ prompts:
 
     Shrň co je potřeba připravit na zítra: jaké budou hodiny,
     jestli jsou testy, co zabalit, co se naučit, na co nezapomenout.
+
+  # ── Message Tagging & Agenda Extraction ──
+  # Variables: {today}, {messages} — substituted literally, NOT via str.format,
+  # because the template contains a JSON schema full of braces.
+  # This one prompt produces the message tags, the calendar events and the
+  # checklist tasks. Leave the JSON shape intact when editing it.
+  # (Defaults live in backend/app/models/config.py: DEFAULT_TAGGING_PROMPT.)
 
   # ── Preparation System Instruction ──
   prepare_system: |

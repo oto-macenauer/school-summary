@@ -20,6 +20,7 @@ from ..modules.marks import MarksData, MarksModule
 from ..modules.prepare import PrepareData, PrepareModule
 from ..modules.summary import SummaryData, SummaryModule
 from ..modules.timetable import TimetableModule, WeekTimetable
+from ..storage.agenda_storage import AgendaStorage
 from ..storage.ai_storage import AIStorage
 from ..storage.gdrive_storage import GDriveStorage
 from ..storage.komens_storage import KomensStorage
@@ -43,6 +44,7 @@ class StudentContext:
     gdrive_storage: GDriveStorage
     mail_storage: MailStorage
     ai_storage: AIStorage
+    agenda_storage: AgendaStorage
     gdrive_client: GoogleDriveClient | None = None
     mail_folder_id: str = ""
     student_info: str = ""
@@ -144,9 +146,12 @@ class StudentManager:
         komens_base = app_data / "komens"
         gdrive_base = app_data / "gdrive"
         mail_base = app_data / "mail"
+        agenda_base = app_data / "agenda"
 
         for student_cfg in config.students:
-            await self._setup_student(student_cfg, config, komens_base, gdrive_base, mail_base)
+            await self._setup_student(
+                student_cfg, config, komens_base, gdrive_base, mail_base, agenda_base,
+            )
 
     async def _setup_student(
         self,
@@ -155,6 +160,7 @@ class StudentManager:
         komens_base: Path,
         gdrive_base: Path,
         mail_base: Path,
+        agenda_base: Path,
     ) -> None:
         """Set up a single student context."""
         client = BakalariClient(app_config.base_url, cfg.username, cfg.password, session=self._session)
@@ -195,6 +201,7 @@ class StudentManager:
 
         komens_path = komens_storage.storage_path
         ai_storage = AIStorage(cfg.name)
+        agenda_storage = AgendaStorage(agenda_base, cfg.name)
 
         ctx = StudentContext(
             name=cfg.name,
@@ -208,6 +215,7 @@ class StudentManager:
             gdrive_storage=gdrive_storage,
             mail_storage=mail_storage,
             ai_storage=ai_storage,
+            agenda_storage=agenda_storage,
             gdrive_client=gdrive_client,
             mail_folder_id=cfg.mail_folder_id,
             student_info=cfg.student_info,
