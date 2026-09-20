@@ -176,6 +176,9 @@ class StudentManager:
         komens_storage.load_index()
 
         gdrive_storage = GDriveStorage(gdrive_base, cfg.name)
+        # Reports used to be stored flat as week_NN.md; file them per school
+        # year so a new year starting again at week 1 does not look synced.
+        gdrive_storage.migrate_legacy_layout()
 
         mail_storage = MailStorage(mail_base, cfg.name)
         mail_storage.load_index()

@@ -34,6 +34,8 @@ gemini_model: "gemini-2.5-flash-lite"
 gdrive:
   service_account_path: ""
   reports_folder_id: ""
+  # Rollover day of the school year. Only month/day are used, so this value
+  # keeps working in later years (e.g. "2025-09-01" means 1 September).
   school_year_start: ""
 
 canteen:

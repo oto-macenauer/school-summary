@@ -803,3 +803,96 @@ class TestRefreshTimetable:
         assert used["last"] is mock_student_context.timetable_last
         assert used["current"] is mock_student_context.timetable
         assert used["next"] is mock_student_context.timetable_next
+
+
+# ---------------------------------------------------------------------------
+# GDrive sync tests
+# ---------------------------------------------------------------------------
+
+class TestRefreshGDrive:
+    """Tests for _refresh_gdrive school-year scoping."""
+
+    @pytest.fixture
+    def gdrive_client(self) -> MagicMock:
+        client = MagicMock()
+        client.school_year = "2026/2027"
+        client.list_week_files = AsyncMock(return_value=[
+            ({"id": "f1", "name": "Week 1.docx"}, 1),
+            ({"id": "f2", "name": "Week 2.docx"}, 2),
+        ])
+        client.fetch_report_from_file = AsyncMock(
+            side_effect=lambda info, week, year: MagicMock(
+                week_number=week, school_year=year,
+            ),
+        )
+        return client
+
+    @pytest.mark.asyncio
+    async def test_no_client_is_a_noop(self, scheduler, mock_student_context):
+        mock_student_context.gdrive_client = None
+
+        await scheduler._refresh_gdrive(mock_student_context)
+
+        mock_student_context.gdrive_storage.save_report.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_syncs_new_school_year_over_old_week_numbers(
+        self, scheduler, mock_student_context, gdrive_client,
+    ):
+        """Last year's stored week 1 must not block this year's week 1."""
+        mock_student_context.gdrive_client = gdrive_client
+        # Storage only has these weeks for the *previous* school year.
+        mock_student_context.gdrive_storage.report_exists.side_effect = (
+            lambda week, year: year == "2025/2026"
+        )
+
+        await scheduler._refresh_gdrive(mock_student_context)
+
+        assert mock_student_context.gdrive_storage.save_report.call_count == 2
+        for call in mock_student_context.gdrive_storage.save_report.call_args_list:
+            assert call.args[1] == "2026/2027"
+
+    @pytest.mark.asyncio
+    async def test_checks_existence_per_school_year(
+        self, scheduler, mock_student_context, gdrive_client,
+    ):
+        mock_student_context.gdrive_client = gdrive_client
+        mock_student_context.gdrive_storage.report_exists.return_value = False
+
+        await scheduler._refresh_gdrive(mock_student_context)
+
+        mock_student_context.gdrive_storage.report_exists.assert_any_call(
+            1, "2026/2027",
+        )
+
+    @pytest.mark.asyncio
+    async def test_skips_reports_already_stored_for_this_year(
+        self, scheduler, mock_student_context, gdrive_client,
+    ):
+        mock_student_context.gdrive_client = gdrive_client
+        mock_student_context.gdrive_storage.report_exists.side_effect = (
+            lambda week, year: week == 1
+        )
+
+        await scheduler._refresh_gdrive(mock_student_context)
+
+        assert mock_student_context.gdrive_storage.save_report.call_count == 1
+        gdrive_client.fetch_report_from_file.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_one_failed_download_does_not_stop_the_rest(
+        self, scheduler, mock_student_context, gdrive_client,
+    ):
+        mock_student_context.gdrive_client = gdrive_client
+        mock_student_context.gdrive_storage.report_exists.return_value = False
+
+        async def flaky(info, week, year):
+            if week == 1:
+                raise RuntimeError("download failed")
+            return MagicMock(week_number=week, school_year=year)
+
+        gdrive_client.fetch_report_from_file = AsyncMock(side_effect=flaky)
+
+        await scheduler._refresh_gdrive(mock_student_context)
+
+        assert mock_student_context.gdrive_storage.save_report.call_count == 1

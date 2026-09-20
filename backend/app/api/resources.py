@@ -59,9 +59,11 @@ def _parse_resource_from_file(
 
     fm = TagStorage.parse_frontmatter(content)
 
+    # Reports use report_id: a bare week number repeats every school year.
     item_id = (
         fm.get("message_id")
         or fm.get("file_id")
+        or fm.get("report_id")
         or fm.get("week_number")
         or path.stem
     )

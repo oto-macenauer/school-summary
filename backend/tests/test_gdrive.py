@@ -127,8 +127,13 @@ VK0Y4AECgYEA5l3W8t9KjJZGtLb7NQHK4q5P6R0mKH3F0zGc8fJHG3Y5eGCvYZB7
     def test_init(self, client):
         """Test client initialization."""
         assert client._reports_folder_id == "test_folder_id"
-        assert client._school_year_start == date(2024, 9, 1)
+        assert client._school_year_anchor == date(2024, 9, 1)
         assert client._access_token is None
+
+    def test_school_year_rolls_over(self, client):
+        """The configured anchor marks the rollover day, not a fixed year."""
+        assert client.school_year_start_for(date(2026, 9, 20)) == date(2026, 9, 1)
+        assert client.school_year_start_for(date(2026, 8, 31)) == date(2025, 9, 1)
 
     @pytest.mark.asyncio
     async def test_load_service_account_not_found(self, mock_session):
@@ -240,11 +245,12 @@ VK0Y4AECgYEA5l3W8t9KjJZGtLb7NQHK4q5P6R0mKH3F0zGc8fJHG3Y5eGCvYZB7
     def test_clear_cache(self, client):
         """Test clearing the report cache."""
         # Add some cached data
-        client._report_cache[15] = WeeklyReport(
+        client._report_cache[("2024/2025", 15)] = WeeklyReport(
             week_number=15,
             content="Test content",
             file_name="report.docx",
             fetched_at=datetime.now(),
+            school_year="2024/2025",
         )
 
         assert len(client._report_cache) == 1
@@ -393,3 +399,290 @@ class TestFolderInfo:
 
         assert folder.id == "abc123"
         assert folder.name == "Week 15"
+
+
+class TestWeekNumberFromName:
+    """Tests for deriving a week number from a report file name."""
+
+    @pytest.fixture
+    def client(self, tmp_path):
+        sa_file = tmp_path / "sa.json"
+        sa_file.write_text('{"client_email":"x","private_key":"x"}')
+        return GoogleDriveClient(str(sa_file), "fid", MagicMock(), date(2024, 9, 1))
+
+    @pytest.mark.parametrize("filename,expected", [
+        ("Week 1.docx", 1),
+        ("Week 16 (15.12-19.12).docx", 16),
+        ("Týden 3.docx", 3),
+        ("W14.docx", 14),
+        ("December", None),
+        ("random.docx", None),
+        ("Notes 2026.docx", None),
+        # Inconsistent spellings seen in the real reports folder
+        ("Weekly report 2.docx", 2),
+        ("Weekly Report 2.docx", 2),
+        ("weekly report 12.docx", 12),
+        ("Report 5.docx", 5),
+        ("Report_7.docx", 7),
+        ("Týdenní report 4.docx", 4),
+        ("Week 140.docx", None),
+        ("Week 99.docx", None),
+    ])
+    def test_week_number(self, client, filename, expected):
+        assert client.week_number_from_name(filename) == expected
+
+    @pytest.mark.parametrize("filename,expected", [
+        # No keyword, but month folders hold reports only
+        ("3.docx", 3),
+        ("03.docx", 3),
+        ("Zari 8.docx", 8),
+        # Ambiguous or out of range: skipped rather than guessed
+        ("15.12-19.12.docx", None),
+        ("December.docx", None),
+        ("Notes 2026.docx", None),
+        ("99.docx", None),
+    ])
+    def test_week_number_lenient(self, client, filename, expected):
+        assert client.week_number_from_name(filename, strict=False) == expected
+
+    def test_keyword_names_resolve_the_same_either_way(self, client):
+        for name in ("Week 3.docx", "Weekly report 2.docx", "14 Week.docx"):
+            assert client.week_number_from_name(name) == client.week_number_from_name(
+                name, strict=False,
+            )
+
+    def test_bare_number_needs_lenient_mode(self, client):
+        assert client.week_number_from_name("3.docx") is None
+
+
+class TestListWeekFiles:
+    """Tests for enumerating every week report in the reports folder."""
+
+    DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+    @pytest.fixture
+    def client(self, tmp_path):
+        sa_file = tmp_path / "sa.json"
+        sa_file.write_text('{"client_email":"x","private_key":"x"}')
+        return GoogleDriveClient(str(sa_file), "root_id", MagicMock(), date(2024, 9, 1))
+
+    def _response(self, files):
+        response = AsyncMock()
+        response.status = 200
+        response.json = AsyncMock(return_value={"files": files})
+        return response
+
+    def _api(self, folders, per_folder):
+        """Mock _api_request: first call lists folders, the rest list files."""
+        async def mock_api(method, url, params=None, **kw):
+            query = (params or {}).get("q", "")
+            if "application/vnd.google-apps.folder'" in query:
+                return self._response(folders)
+            for folder_id, files in per_folder.items():
+                if f"'{folder_id}' in parents" in query:
+                    return self._response(files)
+            return self._response([])
+        return mock_api
+
+    @pytest.mark.asyncio
+    async def test_collects_subfolder_and_root_files(self, client):
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={
+                "sep_id": [
+                    {"id": "f1", "name": "Week 1.docx", "mimeType": self.DOCX},
+                    {"id": "skip", "name": "September notes.docx", "mimeType": self.DOCX},
+                ],
+                "root_id": [
+                    {"id": "f3", "name": "Week 3.docx", "mimeType": self.DOCX},
+                ],
+            },
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [(f["id"], week) for f, week in found] == [("f1", 1), ("f3", 3)]
+
+    @pytest.mark.asyncio
+    async def test_skips_unsupported_mime_types(self, client):
+        api = self._api(
+            folders=[],
+            per_folder={"root_id": [
+                {"id": "f1", "name": "Week 1.pdf", "mimeType": "application/pdf"},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            assert await client.list_week_files() == []
+
+    @pytest.mark.asyncio
+    async def test_deduplicates_by_file_id(self, client):
+        """The same file listed as a subfolder child and a root child counts once."""
+        api = self._api(
+            folders=[{"id": "root_id", "name": "Itself"}],
+            per_folder={"root_id": [
+                {"id": "f1", "name": "Week 1.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert len(found) == 1
+
+    @pytest.mark.asyncio
+    async def test_mixed_naming_in_month_folder(self, client):
+        """'Weekly report 2.docx' sits next to 'Week 3.docx' and both sync."""
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={"sep_id": [
+                {"id": "f1", "name": "Week 1.docx", "mimeType": self.DOCX},
+                {"id": "f2", "name": "Weekly report 2.docx", "mimeType": self.DOCX},
+                {"id": "f3", "name": "Week 3 .docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [(f["id"], week) for f, week in found] == [
+            ("f1", 1), ("f2", 2), ("f3", 3),
+        ]
+
+    @pytest.mark.asyncio
+    async def test_month_folder_accepts_bare_numbers(self, client):
+        """A month folder holds reports only, so a keyword is not required."""
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={"sep_id": [
+                {"id": "f4", "name": "4.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [week for _, week in found] == [4]
+
+    @pytest.mark.asyncio
+    async def test_root_still_requires_a_week_keyword(self, client):
+        """The root folder can hold anything, so a bare number is not a report."""
+        api = self._api(
+            folders=[],
+            per_folder={"root_id": [
+                {"id": "f4", "name": "4.docx", "mimeType": self.DOCX},
+                {"id": "f5", "name": "Week 5.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [(f["id"], week) for f, week in found] == [("f5", 5)]
+
+    @pytest.mark.asyncio
+    async def test_unreadable_report_name_is_skipped(self, client):
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={"sep_id": [
+                {"id": "fx", "name": "Notes.docx", "mimeType": self.DOCX},
+                {"id": "f1", "name": "Week 1.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [week for _, week in found] == [1]
+
+    @pytest.mark.asyncio
+    async def test_keyword_name_wins_a_week_conflict(self, client):
+        """A bare '2.docx' loses to 'Weekly report 2.docx' for the same week."""
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={"sep_id": [
+                {"id": "bare", "name": "2.docx", "mimeType": self.DOCX},
+                {"id": "named", "name": "Weekly report 2.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [(f["id"], week) for f, week in found] == [("named", 2)]
+
+    @pytest.mark.asyncio
+    async def test_duplicate_week_keeps_one_file(self, client):
+        api = self._api(
+            folders=[{"id": "sep_id", "name": "September"}],
+            per_folder={"sep_id": [
+                {"id": "a", "name": "Week 2.docx", "mimeType": self.DOCX},
+                {"id": "b", "name": "Weekly report 2.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [(f["id"], week) for f, week in found] == [("a", 2)]
+
+    @pytest.mark.asyncio
+    async def test_sorted_by_week_number(self, client):
+        api = self._api(
+            folders=[],
+            per_folder={"root_id": [
+                {"id": "f3", "name": "Week 3.docx", "mimeType": self.DOCX},
+                {"id": "f1", "name": "Week 1.docx", "mimeType": self.DOCX},
+                {"id": "f2", "name": "Week 2.docx", "mimeType": self.DOCX},
+            ]},
+        )
+
+        with patch.object(client, "_api_request", side_effect=api):
+            found = await client.list_week_files()
+
+        assert [week for _, week in found] == [1, 2, 3]
+
+
+class TestFetchReportFromFile:
+    """Tests for downloading a report from an already listed file entry."""
+
+    @pytest.fixture
+    def client(self, tmp_path):
+        sa_file = tmp_path / "sa.json"
+        sa_file.write_text('{"client_email":"x","private_key":"x"}')
+        return GoogleDriveClient(str(sa_file), "fid", MagicMock(), date(2024, 9, 1))
+
+    @pytest.mark.asyncio
+    async def test_labels_report_with_school_year(self, client):
+        file_info = {"id": "f1", "name": "Week 1.docx", "mimeType": "text/plain"}
+
+        with patch.object(client, "_get_file_content", AsyncMock(return_value="Body")):
+            report = await client.fetch_report_from_file(file_info, 1, "2026/2027")
+
+        assert report.week_number == 1
+        assert report.school_year == "2026/2027"
+        assert report.content == "Body"
+        assert report.file_name == "Week 1.docx"
+
+    @pytest.mark.asyncio
+    async def test_defaults_to_current_school_year(self, client):
+        file_info = {"id": "f1", "name": "Week 1.docx", "mimeType": "text/plain"}
+
+        with patch.object(client, "_get_file_content", AsyncMock(return_value="Body")):
+            report = await client.fetch_report_from_file(file_info, 1)
+
+        assert report.school_year == client.school_year
+
+    @pytest.mark.asyncio
+    async def test_caches_per_school_year(self, client):
+        """Two school years share week numbers, so the cache is keyed by both."""
+        file_info = {"id": "f1", "name": "Week 1.docx", "mimeType": "text/plain"}
+
+        with patch.object(client, "_get_file_content", AsyncMock(return_value="Old")):
+            await client.fetch_report_from_file(file_info, 1, "2025/2026")
+        with patch.object(client, "_get_file_content", AsyncMock(return_value="New")):
+            await client.fetch_report_from_file(file_info, 1, "2026/2027")
+
+        assert client._report_cache[("2025/2026", 1)].content == "Old"
+        assert client._report_cache[("2026/2027", 1)].content == "New"

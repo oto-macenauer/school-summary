@@ -200,13 +200,28 @@ def _resolve_gdrive(params: list[str], ctx: StudentContext) -> str:
 
         school_start = get_school_year_start()
         week_num = get_school_week_number(date.today(), school_start)
-        return ctx.gdrive_storage.get_report(week_num) or f"Report pro týden {week_num} není k dispozici."
+        report = ctx.gdrive_storage.get_report(week_num)
+        return report or f"Report pro týden {week_num} není k dispozici."
 
-    # wN format (e.g. w10, w5)
+    # Explicit school year, e.g. gdrive:2025-2026:w10
+    if re.match(r"^\d{4}-\d{4}$", param):
+        year = param.replace("-", "/")
+        match = re.match(r"^w(\d+)$", params[1].lower()) if len(params) > 1 else None
+        if not match:
+            return "Neznámý parametr pro gdrive."
+        week_num = int(match.group(1))
+        report = ctx.gdrive_storage.get_report(week_num, year)
+        return report or f"Report pro týden {week_num} ({year}) není k dispozici."
+
+    # wN format (e.g. w10, w5) — current school year, then older years
     match = re.match(r"^w(\d+)$", param)
     if match:
         week_num = int(match.group(1))
-        return ctx.gdrive_storage.get_report(week_num) or f"Report pro týden {week_num} není k dispozici."
+        report = (
+            ctx.gdrive_storage.get_report(week_num)
+            or ctx.gdrive_storage.find_report(week_num)
+        )
+        return report or f"Report pro týden {week_num} není k dispozici."
 
     return "Neznámý parametr pro gdrive."
 
@@ -285,17 +300,26 @@ def get_available_variables(ctx: StudentContext) -> list[dict[str, str]]:
                 "description": f"Známky z předmětu {subject.subject_name}",
             })
 
-    # Add available gdrive week reports
-    reports = ctx.gdrive_storage.get_all_reports()
-    for path in reports[:10]:
-        # Extract week number from filename "week_NN.md"
-        match = re.search(r"week_(\d+)", path.stem)
-        if match:
-            week_num = int(match.group(1))
+    # Add available gdrive week reports, newest school year first.  Week
+    # numbers repeat across years, so a bare gdrive:wN is offered once and
+    # older years are addressed with their own school year.
+    seen_weeks: set[int] = set()
+    for report in ctx.gdrive_storage.get_all_reports_data()[:10]:
+        week_num = report["week_number"]
+        year = report["school_year"]
+        if week_num in seen_weeks:
             variables.append({
-                "name": f"gdrive:w{week_num}",
+                "name": f"gdrive:{year.replace('/', '-')}:w{week_num}",
                 "category": "gdrive",
-                "description": f"Report týdne {week_num}",
+                "description": f"Report týdne {week_num} ({year})",
             })
+            continue
+        seen_weeks.add(week_num)
+        variables.append({
+            "name": f"gdrive:w{week_num}",
+            "category": "gdrive",
+            "description": f"Report týdne {week_num} ({year})" if year
+            else f"Report týdne {week_num}",
+        })
 
     return variables

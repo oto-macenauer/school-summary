@@ -363,19 +363,26 @@ class BackgroundScheduler:
             if not gdrive:
                 return ""
             try:
-                from ..core.gdrive import get_school_week_number, get_school_year_start
-                school_start = get_school_year_start(week_start)
+                from ..core.gdrive import get_school_week_number, school_year_label
+                school_start = gdrive.school_year_start_for(week_start)
                 week_num = get_school_week_number(week_start, school_start)
+                school_year = school_year_label(school_start)
 
                 # Check storage first
-                stored = ctx.gdrive_storage.get_report(week_num)
+                stored = ctx.gdrive_storage.get_report(week_num, school_year)
                 if stored:
                     return stored
 
-                # Fetch from GDrive
-                report = await gdrive.get_week_report(week_number=week_num)
+                # The Drive folder only holds the current school year, so a
+                # week on the far side of the September rollover is never
+                # fetched — only what is already stored counts.
+                if school_year != gdrive.school_year:
+                    return ""
+
+                report = await gdrive.get_week_report(
+                    week_number=week_num, school_year=school_year,
+                )
                 if report:
-                    school_year = f"{school_start.year}/{school_start.year + 1}"
                     ctx.gdrive_storage.save_report(report, school_year)
                     return report.content
             except Exception as err:
@@ -529,66 +536,36 @@ class BackgroundScheduler:
         _LOGGER.info("Refreshed preparation for %s", ctx.name)
 
     async def _refresh_gdrive(self, ctx: StudentContext) -> None:
-        """Sync all available weekly reports from Google Drive."""
+        """Sync all available weekly reports from Google Drive.
+
+        The reports folder holds one school year, so reports are stored under
+        the school year in progress.  Week numbers restart every September and
+        would otherwise collide with the previous year's stored reports.
+        """
         gdrive = ctx.gdrive_client
         if not gdrive:
             return
 
-        import re
-        from ..core.gdrive import get_school_year_start
-
-        school_start = get_school_year_start()
-        school_year = f"{school_start.year}/{school_start.year + 1}"
+        school_year = gdrive.school_year
         synced = 0
 
-        from ..core.gdrive import GDRIVE_FILES_ENDPOINT
-
-        # Helper: process a list of files, syncing any matching week reports
-        async def _process_files(files: list[dict]) -> int:
-            count = 0
-            for file_info in files:
-                name = file_info.get("name", "")
-                match = re.search(r"(\d+)", name)
-                if not match:
-                    continue
-                week_num = int(match.group(1))
-                if not gdrive._matches_week_number(name, week_num):
-                    continue
-                if ctx.gdrive_storage.report_exists(week_num):
-                    continue
-                try:
-                    report = await gdrive.get_week_report(week_number=week_num)
-                    if report:
-                        ctx.gdrive_storage.save_report(report, school_year)
-                        count += 1
-                except Exception as err:
-                    _LOGGER.warning("Failed to sync GDrive week %d: %s", week_num, err)
-            return count
-
-        # Scan files in month subfolders
-        subfolders = await gdrive.list_folders()
-        for folder in subfolders:
-            query = f"'{folder.id}' in parents and trashed = false"
-            params = {"q": query, "fields": "files(id, name, mimeType)", "pageSize": "50"}
-            response = await gdrive._api_request("GET", GDRIVE_FILES_ENDPOINT, params=params)
-            if response.status != 200:
+        for file_info, week_num in await gdrive.list_week_files():
+            if ctx.gdrive_storage.report_exists(week_num, school_year):
                 continue
-            files = (await response.json()).get("files", [])
-            synced += await _process_files(files)
-
-        # Scan files directly in the root reports folder
-        root_query = (
-            f"'{gdrive._reports_folder_id}' in parents and trashed = false "
-            f"and mimeType != 'application/vnd.google-apps.folder'"
-        )
-        root_params = {"q": root_query, "fields": "files(id, name, mimeType)", "pageSize": "100"}
-        root_response = await gdrive._api_request("GET", GDRIVE_FILES_ENDPOINT, params=root_params)
-        if root_response.status == 200:
-            root_files = (await root_response.json()).get("files", [])
-            synced += await _process_files(root_files)
+            try:
+                report = await gdrive.fetch_report_from_file(
+                    file_info, week_num, school_year,
+                )
+                ctx.gdrive_storage.save_report(report, school_year)
+                synced += 1
+            except Exception as err:
+                _LOGGER.warning("Failed to sync GDrive week %d: %s", week_num, err)
 
         if synced:
-            _LOGGER.info("Synced %d new GDrive reports for %s", synced, ctx.name)
+            _LOGGER.info(
+                "Synced %d new GDrive reports (%s) for %s",
+                synced, school_year, ctx.name,
+            )
 
     async def _refresh_mail(self, ctx: StudentContext) -> None:
         """Sync new mail files from Google Drive."""
@@ -750,10 +727,12 @@ class BackgroundScheduler:
 
         fm = TagStorage.parse_frontmatter(content)
 
-        # Extract ID
+        # Extract ID. Reports use report_id because a bare week number repeats
+        # every school year and would merge two reports into one source.
         msg_id = (
             fm.get("message_id")
             or fm.get("file_id")
+            or fm.get("report_id")
             or fm.get("week_number")
             or path.stem
         )

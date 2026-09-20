@@ -161,6 +161,8 @@ class GDriveConfig(BaseModel):
 
     service_account_path: str = ""
     reports_folder_id: str = ""
+    # Rollover anchor of the school year: only month/day are used, so the
+    # value stays correct in later school years.
     school_year_start: str = ""
 
 

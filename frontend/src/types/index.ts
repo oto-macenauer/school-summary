@@ -173,6 +173,7 @@ export interface PrepareData {
 }
 
 export interface GDriveReport {
+  report_id: string
   week_number: number
   content: string
   school_year: string
