@@ -480,8 +480,11 @@ class TestSchedulerLifecycle:
     async def test_start_creates_tasks(self, scheduler):
         """Starting the scheduler should create async tasks."""
         await scheduler.start()
-        # 5 tasks per student (timetable, marks, komens, summary, prepare)
-        assert len(scheduler._tasks) == 5
+        # One asyncio task per registered task key
+        assert len(scheduler._tasks) == len(scheduler._task_statuses)
+        assert {"timetable:TestStudent", "marks:TestStudent"} <= set(
+            scheduler._task_statuses
+        )
         await scheduler.stop()
 
     @pytest.mark.asyncio
@@ -504,7 +507,9 @@ class TestSchedulerLifecycle:
             "summary:TestStudent",
             "prepare:TestStudent",
         }
-        assert set(scheduler._task_statuses.keys()) == expected_keys
+        # Optional tasks (gdrive, mail, tagging, agenda digest) depend on what
+        # the student has configured, so the core set is a subset.
+        assert expected_keys <= set(scheduler._task_statuses.keys())
         for status in scheduler._task_statuses.values():
             assert status.last_status == "pending"
             assert status.next_run is not None
@@ -641,8 +646,9 @@ class TestAICachePersistence:
             if key.startswith("summary:"):
                 assert len(value) == 64
                 # Should match expected hash
+                system = scheduler._config.prompts.summary_system or ""
                 expected = hashlib.sha256(
-                    ("prompt" + "\0" + "").encode()
+                    ("prompt" + "\0" + system).encode()
                 ).hexdigest()
                 assert value == expected
 
@@ -702,7 +708,7 @@ class TestTriggerTask:
         keys = scheduler.get_task_keys()
         assert "timetable:TestStudent" in keys
         assert "summary:TestStudent" in keys
-        assert len(keys) == 5  # timetable, marks, komens, summary, prepare
+        assert len(keys) == len(scheduler._task_statuses)
         await scheduler.stop()
 
 
