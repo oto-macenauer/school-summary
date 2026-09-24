@@ -1,5 +1,6 @@
 """Dashboard aggregated endpoint."""
 
+import re
 from datetime import date
 
 from fastapi import APIRouter
@@ -7,8 +8,25 @@ from fastapi import APIRouter
 from ..dependencies import get_manager, get_student_or_404
 from ..modules.agenda import ItemState, upcoming_events
 from .agenda import open_task_counts, task_dicts, with_state
+from .resources import collect_resources
 
 router = APIRouter(tags=["dashboard"])
+
+RECENT_RESOURCES = 5
+PREVIEW_CHARS = 160
+
+
+def _preview(body: str, is_markdown: bool | None) -> str:
+    """Short plain-text preview of a resource body."""
+    text = body
+    if is_markdown:
+        # Reports are markdown: drop heading/list/emphasis markers
+        text = re.sub(r"^\s*(#+|[-*]|\d+\.)\s+", "", text, flags=re.MULTILINE)
+        text = text.replace("**", "").replace("__", "")
+    text = " ".join(text.split())
+    if len(text) <= PREVIEW_CHARS:
+        return text
+    return text[:PREVIEW_CHARS].rstrip() + "…"
 
 
 @router.get("/api/students/{name}/dashboard")
@@ -33,10 +51,22 @@ async def get_dashboard(name: str):
     summary_current = _fmt_summary(ctx.summary_current)
     summary_next = _fmt_summary(ctx.summary_next)
 
-    # Komens
-    komens = None
-    if ctx.komens:
-        komens = ctx.komens.to_summary_dict()
+    # Latest messages of every kind (komens, mail, reports)
+    all_resources = collect_resources(ctx)
+    resources = {
+        "recent": [
+            {
+                **{k: v for k, v in item.items() if k != "body"},
+                "preview": _preview(item.get("body") or "", item.get("isMarkdown")),
+            }
+            for item in all_resources[:RECENT_RESOURCES]
+        ],
+        "total": len(all_resources),
+        "unread_count": sum(
+            1 for i in all_resources
+            if i["category"] == "komens" and i.get("isRead") is False
+        ),
+    }
 
     # Marks
     marks = None
@@ -91,7 +121,7 @@ async def get_dashboard(name: str):
         "summary_last": summary_last,
         "summary_current": summary_current,
         "summary_next": summary_next,
-        "komens": komens,
+        "resources": resources,
         "marks": marks,
         "prepare_today": prepare_today,
         "prepare_tomorrow": prepare_tomorrow,

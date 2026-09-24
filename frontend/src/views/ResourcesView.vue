@@ -1,19 +1,41 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
+import { useRoute } from 'vue-router'
 import { marked } from 'marked'
 import { useStudentStore } from '@/stores/student'
 import { getResources } from '@/api/client'
-import type { ResourceItem, ResourceCategory } from '@/types'
+import type { ResourceItem, ResourceCategory, ResourceQuery } from '@/types'
+
+const PAGE_SIZE = 30
+// Upper bound on pages fetched while looking for an anchored item
+const MAX_ANCHOR_PAGES = 20
 
 const store = useStudentStore()
+const route = useRoute()
 const items = ref<ResourceItem[]>([])
+const total = ref(0)
+const hasMore = ref(false)
+const counts = ref<Record<ResourceCategory | 'all', number>>({ all: 0, komens: 0, mail: 0, report: 0 })
+const unreadCount = ref(0)
 const loading = ref(false)
+const loadingMore = ref(false)
 const expanded = ref<Set<string>>(new Set())
+const highlighted = ref<string | null>(null)
 const search = ref('')
+const debouncedSearch = ref('')
 const activeCategory = ref<ResourceCategory | 'all'>('all')
 const activeImportance = ref<string | null>(null)
 const activeSubject = ref<string | null>(null)
 const availableTags = ref<{ subjects: string[]; importance: string[] }>({ subjects: [], importance: [] })
+const sentinel = ref<HTMLElement | null>(null)
+
+// Bumped on every reset so responses for stale filters are dropped
+let requestId = 0
+let searchTimer: ReturnType<typeof setTimeout> | undefined
+let highlightTimer: ReturnType<typeof setTimeout> | undefined
+let observer: IntersectionObserver | null = null
+// Set by init(): scroll to the URL hash once the first page is in
+let anchorPending = false
 
 const categories: { key: ResourceCategory | 'all'; label: string }[] = [
   { key: 'all', label: 'Vše' },
@@ -43,20 +65,114 @@ function tagLabel(tag: string): string {
   return tagLabels[tag] || tag
 }
 
+function query(offset: number): ResourceQuery {
+  return {
+    offset,
+    limit: PAGE_SIZE,
+    category: activeCategory.value === 'all' ? undefined : activeCategory.value,
+    importance: activeImportance.value ?? undefined,
+    subject: activeSubject.value ?? undefined,
+    q: debouncedSearch.value.trim() || undefined,
+  }
+}
+
 async function load() {
   if (!store.current) return
+  const id = ++requestId
   loading.value = true
+  loadingMore.value = false
 
   try {
-    const result = await getResources(store.current)
+    const result = await getResources(store.current, query(0))
+    if (id !== requestId) return
     items.value = result.items
+    total.value = result.total
+    hasMore.value = result.has_more
+    counts.value = result.counts
+    unreadCount.value = result.unread_count
     availableTags.value = result.available_tags
   } catch {
+    if (id !== requestId) return
     items.value = []
-    availableTags.value = { subjects: [], importance: [] }
+    total.value = 0
+    hasMore.value = false
   }
 
   loading.value = false
+  await nextTick()
+  rearmObserver()
+  if (anchorPending) {
+    anchorPending = false
+    await focusAnchor()
+  }
+}
+
+async function loadMore() {
+  if (!store.current || loading.value || loadingMore.value || !hasMore.value) return
+  const id = requestId
+  loadingMore.value = true
+
+  try {
+    const result = await getResources(store.current, query(items.value.length))
+    if (id !== requestId) return
+    const seen = new Set(items.value.map(i => i.id))
+    items.value = items.value.concat(result.items.filter(i => !seen.has(i.id)))
+    total.value = result.total
+    hasMore.value = result.has_more
+  } catch {
+    if (id !== requestId) return
+    hasMore.value = false
+  } finally {
+    if (id === requestId) loadingMore.value = false
+  }
+
+  await nextTick()
+  rearmObserver()
+}
+
+// Re-observing fires the callback again if the sentinel is still on screen,
+// so a short page on a tall viewport keeps loading until it fills.
+function rearmObserver() {
+  if (!observer || !sentinel.value) return
+  observer.unobserve(sentinel.value)
+  observer.observe(sentinel.value)
+}
+
+async function focusAnchor() {
+  const id = decodeURIComponent(route.hash.replace(/^#/, ''))
+  if (!id) return
+
+  let pages = 0
+  while (!items.value.some(i => i.id === id) && hasMore.value && pages < MAX_ANCHOR_PAGES) {
+    await loadMore()
+    pages++
+  }
+  if (!items.value.some(i => i.id === id)) return
+
+  expanded.value.add(id)
+  highlighted.value = id
+  await nextTick()
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  clearTimeout(highlightTimer)
+  highlightTimer = setTimeout(() => { highlighted.value = null }, 2500)
+}
+
+function resetFilters() {
+  clearTimeout(searchTimer)
+  search.value = ''
+  debouncedSearch.value = ''
+  activeCategory.value = 'all'
+  activeImportance.value = null
+  activeSubject.value = null
+}
+
+async function init() {
+  anchorPending = true
+  resetFilters()
+  expanded.value = new Set()
+  // Resetting filters that were set triggers the filter watcher's load
+  await nextTick()
+  if (!loading.value) await load()
 }
 
 function toggle(id: string) {
@@ -71,34 +187,13 @@ function renderMd(text: string): string {
   return marked.parse(text) as string
 }
 
-const filtered = computed(() => {
-  let list = items.value
-  if (activeCategory.value !== 'all') {
-    list = list.filter(i => i.category === activeCategory.value)
-  }
-  if (activeImportance.value) {
-    list = list.filter(i => i.tags?.importance?.includes(activeImportance.value!))
-  }
-  if (activeSubject.value) {
-    list = list.filter(i => i.tags?.subjects?.includes(activeSubject.value!))
-  }
-  const q = search.value.toLowerCase().trim()
-  if (q) {
-    list = list.filter(i =>
-      (i.title?.toLowerCase().includes(q)) ||
-      (i.sender?.toLowerCase().includes(q)) ||
-      (i.body?.toLowerCase().includes(q))
-    )
-  }
-  return list
-})
-
 function categoryCount(key: ResourceCategory | 'all'): number {
-  if (key === 'all') return items.value.length
-  return items.value.filter(i => i.category === key).length
+  return counts.value[key] ?? 0
 }
 
-const unreadCount = computed(() => items.value.filter(i => i.category === 'komens' && i.isRead === false).length)
+const filtersActive = computed(() =>
+  activeCategory.value !== 'all' || !!activeImportance.value || !!activeSubject.value || !!debouncedSearch.value.trim(),
+)
 
 interface DayGroup {
   label: string
@@ -107,7 +202,7 @@ interface DayGroup {
 
 const groupedByDay = computed<DayGroup[]>(() => {
   const groups: Record<string, { ts: number; label: string; items: ResourceItem[] }> = {}
-  for (const item of filtered.value) {
+  for (const item of items.value) {
     const d = item.date ? new Date(item.date) : null
     const label = d ? d.toLocaleDateString('cs') : 'Bez data'
     if (!groups[label]) groups[label] = { ts: d ? d.getTime() : 0, label, items: [] }
@@ -118,8 +213,28 @@ const groupedByDay = computed<DayGroup[]>(() => {
     .map(({ label, items }) => ({ label, items }))
 })
 
-onMounted(load)
-watch(() => store.current, load)
+watch(search, value => {
+  clearTimeout(searchTimer)
+  searchTimer = setTimeout(() => { debouncedSearch.value = value }, 300)
+})
+watch([activeCategory, activeImportance, activeSubject, debouncedSearch], () => { load() })
+watch(() => store.current, init)
+watch(() => route.hash, focusAnchor)
+
+onMounted(() => {
+  observer = new IntersectionObserver(
+    entries => { if (entries.some(e => e.isIntersecting)) loadMore() },
+    { rootMargin: '400px 0px' },
+  )
+  if (sentinel.value) observer.observe(sentinel.value)
+  init()
+})
+
+onBeforeUnmount(() => {
+  observer?.disconnect()
+  clearTimeout(searchTimer)
+  clearTimeout(highlightTimer)
+})
 </script>
 
 <template>
@@ -173,7 +288,7 @@ watch(() => store.current, load)
           class="search-input glass-btn"
           placeholder="Hledat..."
         />
-        <span v-if="search" class="search-count">{{ filtered.length }} výsledků</span>
+        <span v-if="filtersActive" class="search-count">{{ total }} výsledků</span>
       </div>
     </div>
 
@@ -188,9 +303,10 @@ watch(() => store.current, load)
         <div class="timeline__items">
           <div
             v-for="item in group.items"
+            :id="item.id"
             :key="item.id"
             class="item inner-card"
-            :class="{ 'item--unread': item.isRead === false }"
+            :class="{ 'item--unread': item.isRead === false, 'item--highlight': highlighted === item.id }"
             @click="toggle(item.id)"
           >
             <div class="item__header">
@@ -247,6 +363,10 @@ watch(() => store.current, load)
     </div>
 
     <p v-else-if="!loading" class="empty">Žádné zdroje k zobrazení</p>
+
+    <div ref="sentinel" class="sentinel" aria-hidden="true"></div>
+    <p v-if="loadingMore" class="empty load-more">Načítání dalších...</p>
+    <p v-else-if="!hasMore && items.length > PAGE_SIZE" class="empty load-more">Všech {{ total }} zobrazeno</p>
   </div>
 </template>
 
@@ -357,6 +477,11 @@ watch(() => store.current, load)
 }
 .item:hover { border-color: rgba(255, 255, 255, 0.12); }
 .item--unread { border-left: 2px solid var(--accent); }
+.item--highlight {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.item { scroll-margin-top: 5rem; }
 
 .item__header { display: flex; align-items: baseline; gap: var(--space-sm); min-width: 0; max-width: 100%; }
 .item__tag {
@@ -433,6 +558,8 @@ watch(() => store.current, load)
 }
 
 .empty { color: var(--text-muted); font-size: var(--font-size-base); }
+.sentinel { height: 1px; }
+.load-more { text-align: center; padding: var(--space-md) 0; }
 
 @media (max-width: 768px) {
   .timeline__day {

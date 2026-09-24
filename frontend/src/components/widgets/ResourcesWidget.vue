@@ -1,38 +1,46 @@
 <script setup lang="ts">
 import { useStudentStore } from '@/stores/student'
-import type { KomensData } from '@/types'
+import type { DashboardResources, ResourceCategory } from '@/types'
 import GlassCard from '@/components/ui/GlassCard.vue'
 
-defineProps<{ data: KomensData | null }>()
+defineProps<{ data: DashboardResources | null }>()
 
 const store = useStudentStore()
 
-function truncate(text: string, max: number): string {
-  if (!text || text.length <= max) return text || ''
-  return text.slice(0, max).trimEnd() + '\u2026'
+const categoryLabels: Record<ResourceCategory, string> = {
+  komens: 'Komens',
+  mail: 'Mail',
+  report: 'Report',
 }
 </script>
 
 <template>
-  <GlassCard title="Komens">
-    <template v-if="data">
-      <div class="komens-header">
+  <GlassCard title="Zprávy">
+    <template v-if="data?.recent.length">
+      <div class="res-header">
         <span v-if="data.unread_count" class="badge badge--accent">{{ data.unread_count }} nepřečtených</span>
+        <RouterLink
+          :to="{ name: 'resources', params: { student: store.current?.toLowerCase() } }"
+          class="res-all"
+        >
+          Všechny ({{ data.total }})
+        </RouterLink>
       </div>
       <div class="messages">
         <RouterLink
-          v-for="m in data.recent_messages?.slice(0, 5)"
+          v-for="m in data.recent"
           :key="m.id"
-          :to="{ name: 'resources', params: { student: store.current?.toLowerCase() } }"
+          :to="{ name: 'resources', params: { student: store.current?.toLowerCase() }, hash: `#${m.id}` }"
           class="msg"
-          :class="{ 'msg--unread': !m.is_read }"
+          :class="{ 'msg--unread': m.isRead === false }"
         >
           <div class="msg__top">
+            <span class="msg__tag" :class="`msg__tag--${m.category}`">{{ categoryLabels[m.category] }}</span>
             <span class="msg__title">{{ m.title }}</span>
             <span class="msg__date">{{ m.date ? new Date(m.date).toLocaleDateString('cs') : '' }}</span>
           </div>
-          <span class="msg__sender">{{ m.sender }}</span>
-          <p class="msg__preview">{{ truncate(m.text, 120) }}</p>
+          <span v-if="m.sender" class="msg__sender">{{ m.sender }}</span>
+          <p class="msg__preview">{{ m.preview }}</p>
         </RouterLink>
       </div>
     </template>
@@ -41,7 +49,17 @@ function truncate(text: string, max: number): string {
 </template>
 
 <style scoped>
-.komens-header { margin-bottom: var(--space-sm); }
+.res-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-sm);
+}
+.res-all {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--accent-text);
+}
 .messages { display: flex; flex-direction: column; gap: var(--space-xs); max-width: 100%; }
 .msg {
   display: block;
@@ -55,9 +73,19 @@ function truncate(text: string, max: number): string {
 .msg:last-child { border-bottom: none; }
 .msg:hover { background: rgba(255, 255, 255, 0.05); text-decoration: none; }
 .msg--unread .msg__title { font-weight: var(--font-weight-semibold); }
-.msg__top { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-sm); min-width: 0; }
+.msg__top { display: flex; align-items: baseline; gap: var(--space-sm); min-width: 0; }
+.msg__tag {
+  font-size: var(--font-size-xs);
+  padding: 1px var(--space-xs);
+  border-radius: 4px;
+  flex-shrink: 0;
+  font-weight: var(--font-weight-medium);
+}
+.msg__tag--komens { background: var(--accent-soft); color: var(--accent-text); }
+.msg__tag--mail { background: rgba(52, 211, 153, 0.2); color: var(--success-text); }
+.msg__tag--report { background: rgba(251, 191, 36, 0.2); color: var(--warning-text); }
 .msg__title { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.msg__date { color: var(--text-muted); font-size: var(--font-size-xs); flex-shrink: 0; margin-left: var(--space-sm); }
+.msg__date { color: var(--text-muted); font-size: var(--font-size-xs); flex-shrink: 0; }
 .msg__sender {
   color: var(--text-secondary);
   font-size: var(--font-size-sm);

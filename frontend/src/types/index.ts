@@ -86,7 +86,7 @@ export interface DashboardData {
   summary_last: SummaryData | null
   summary_current: SummaryData | null
   summary_next: SummaryData | null
-  komens: KomensData | null
+  resources: DashboardResources
   marks: MarksData | null
   prepare_today: PrepareData | null
   prepare_tomorrow: PrepareData | null
@@ -254,6 +254,34 @@ export interface ResourceItem {
   isConfirmed?: boolean
   isMarkdown?: boolean
   tags?: MessageTags
+}
+
+export interface ResourcesPage {
+  items: ResourceItem[]
+  total: number
+  offset: number
+  limit: number
+  has_more: boolean
+  counts: Record<ResourceCategory | 'all', number>
+  unread_count: number
+  available_tags: { subjects: string[]; importance: string[] }
+}
+
+export interface ResourceQuery {
+  offset?: number
+  limit?: number
+  category?: ResourceCategory
+  importance?: string
+  subject?: string
+  q?: string
+}
+
+export type ResourcePreview = Omit<ResourceItem, 'body'> & { preview: string }
+
+export interface DashboardResources {
+  recent: ResourcePreview[]
+  total: number
+  unread_count: number
 }
 
 export interface CanteenAllergen {

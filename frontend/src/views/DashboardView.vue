@@ -4,7 +4,7 @@ import { useStudentStore } from '@/stores/student'
 import { useDashboardStore } from '@/stores/dashboard'
 import TimetableWidget from '@/components/widgets/TimetableWidget.vue'
 import SummaryWidget from '@/components/widgets/SummaryWidget.vue'
-import KomensWidget from '@/components/widgets/KomensWidget.vue'
+import ResourcesWidget from '@/components/widgets/ResourcesWidget.vue'
 import AgendaWidget from '@/components/widgets/AgendaWidget.vue'
 import TasksWidget from '@/components/widgets/TasksWidget.vue'
 import MarksWidget from '@/components/widgets/MarksWidget.vue'
@@ -38,7 +38,7 @@ watch(() => studentStore.current, reload)
         />
         <PrepareWidget :data="dashboard.data.prepare_today" title="Dnes" />
         <PrepareWidget :data="dashboard.data.prepare_tomorrow" title="Zítra" />
-        <KomensWidget :data="dashboard.data.komens" />
+        <ResourcesWidget :data="dashboard.data.resources" />
         <MarksWidget :data="dashboard.data.marks" />
       </div>
       <p v-else class="empty">Vyberte studenta pro zobrazení přehledu</p>

@@ -1,5 +1,5 @@
 import axios from 'axios'
-import type { AgendaEventsResponse, AgendaTasksResponse, CanteenData, DashboardData, GDriveReport, LogEntry, MailData, PromptResponse, PromptVariable, ResourceItem, TaskStatus } from '@/types'
+import type { AgendaEventsResponse, AgendaTasksResponse, CanteenData, DashboardData, GDriveReport, LogEntry, MailData, PromptResponse, PromptVariable, ResourceQuery, ResourcesPage, TaskStatus } from '@/types'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -82,11 +82,11 @@ export async function getGeminiUsage() {
   return data
 }
 
-export async function getResources(student: string): Promise<{
-  items: ResourceItem[]
-  available_tags: { subjects: string[]; importance: string[] }
-}> {
-  const { data } = await api.get(`/students/${student}/resources`)
+export async function getResources(
+  student: string,
+  params: ResourceQuery = {},
+): Promise<ResourcesPage> {
+  const { data } = await api.get(`/students/${student}/resources`, { params })
   return data
 }
 

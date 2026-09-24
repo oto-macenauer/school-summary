@@ -7,7 +7,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
 from ..dependencies import get_student_or_404
 from ..storage.tag_storage import TagStorage
@@ -118,47 +118,114 @@ def _parse_resource_from_file(
     }
 
 
-@router.get("/api/students/{name}/resources")
-async def get_resources(name: str):
-    """Get all resources (komens, mail, reports) with tags for a student."""
-    ctx = get_student_or_404(name)
-    items: list[dict[str, Any]] = []
-    available_tags: dict[str, set[str]] = {"subjects": set(), "importance": set()}
+# Parsed items keyed by file path; reused while the file's mtime is unchanged.
+# The endpoint pages over every stored file, so re-reading them all on each
+# scroll would dominate the request.
+_parse_cache: dict[Path, tuple[float, dict[str, Any]]] = {}
 
-    # Read komens from storage
-    for md_file in ctx.komens_storage.get_saved_files():
-        item = _parse_resource_from_file(md_file, "komens")
-        if item:
-            items.append(item)
-            if item.get("tags"):
-                available_tags["subjects"].update(item["tags"].get("subjects", []))
-                available_tags["importance"].update(item["tags"].get("importance", []))
+CATEGORIES = ("komens", "mail", "report")
+MAX_LIMIT = 100
 
-    # Read mail from storage
+
+def _parse_cached(path: Path, category: str) -> dict[str, Any] | None:
+    try:
+        mtime = path.stat().st_mtime
+    except OSError:
+        _parse_cache.pop(path, None)
+        return None
+    cached = _parse_cache.get(path)
+    if cached and cached[0] == mtime:
+        return cached[1]
+    item = _parse_resource_from_file(path, category)
+    if item:
+        _parse_cache[path] = (mtime, item)
+    return item
+
+
+def collect_resources(ctx: Any) -> list[dict[str, Any]]:
+    """All stored resources of a student, newest first."""
+    sources: list[tuple[str, list[Path]]] = [
+        ("komens", ctx.komens_storage.get_saved_files()),
+    ]
     mail_path = ctx.mail_storage.storage_path
-    if mail_path.exists():
-        for md_file in mail_path.glob("*.md"):
-            item = _parse_resource_from_file(md_file, "mail")
+    sources.append(("mail", list(mail_path.glob("*.md")) if mail_path.exists() else []))
+    sources.append(("report", ctx.gdrive_storage.get_all_reports()))
+
+    items: list[dict[str, Any]] = []
+    for category, files in sources:
+        for md_file in files:
+            item = _parse_cached(md_file, category)
             if item:
                 items.append(item)
-                if item.get("tags"):
-                    available_tags["subjects"].update(item["tags"].get("subjects", []))
-                    available_tags["importance"].update(item["tags"].get("importance", []))
 
-    # Read gdrive reports
-    for md_file in ctx.gdrive_storage.get_all_reports():
-        item = _parse_resource_from_file(md_file, "report")
-        if item:
-            items.append(item)
-            if item.get("tags"):
-                available_tags["subjects"].update(item["tags"].get("subjects", []))
-                available_tags["importance"].update(item["tags"].get("importance", []))
-
-    # Sort by date descending
     items.sort(key=lambda x: x.get("date") or "", reverse=True)
+    return items
 
+
+def _matches(
+    item: dict[str, Any],
+    importance: str | None,
+    subject: str | None,
+    query: str,
+) -> bool:
+    tags = item.get("tags") or {}
+    if importance and importance not in tags.get("importance", []):
+        return False
+    if subject and subject not in tags.get("subjects", []):
+        return False
+    if query:
+        haystack = " ".join(
+            str(item.get(k) or "") for k in ("title", "sender", "body")
+        ).lower()
+        if query not in haystack:
+            return False
+    return True
+
+
+@router.get("/api/students/{name}/resources")
+async def get_resources(
+    name: str,
+    offset: int = Query(0, ge=0),
+    limit: int = Query(30, ge=1, le=MAX_LIMIT),
+    category: str | None = None,
+    importance: str | None = None,
+    subject: str | None = None,
+    q: str | None = None,
+):
+    """One page of resources (komens, mail, reports) with tags for a student.
+
+    Filters apply before paging. ``counts`` are per category under the tag and
+    search filters, so the category pills show what each would list.
+    """
+    ctx = get_student_or_404(name)
+    items = collect_resources(ctx)
+
+    available_tags: dict[str, set[str]] = {"subjects": set(), "importance": set()}
+    for item in items:
+        if item.get("tags"):
+            available_tags["subjects"].update(item["tags"].get("subjects", []))
+            available_tags["importance"].update(item["tags"].get("importance", []))
+
+    query = (q or "").strip().lower()
+    matching = [i for i in items if _matches(i, importance, subject, query)]
+    counts = {"all": len(matching), **{c: 0 for c in CATEGORIES}}
+    for item in matching:
+        counts[item["category"]] = counts.get(item["category"], 0) + 1
+
+    if category and category != "all":
+        matching = [i for i in matching if i["category"] == category]
+
+    page = matching[offset:offset + limit]
     return {
-        "items": items,
+        "items": page,
+        "total": len(matching),
+        "offset": offset,
+        "limit": limit,
+        "has_more": offset + len(page) < len(matching),
+        "counts": counts,
+        "unread_count": sum(
+            1 for i in items if i["category"] == "komens" and i.get("isRead") is False
+        ),
         "available_tags": {
             "subjects": sorted(available_tags["subjects"]),
             "importance": sorted(available_tags["importance"]),

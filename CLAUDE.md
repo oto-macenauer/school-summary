@@ -198,6 +198,7 @@ backend/tests/
   test_agenda_storage.py   # Agenda YAML storage + user state overlay
   test_agenda_api.py       # Calendar/checklist endpoints (FastAPI TestClient)
   test_agenda_extraction.py # AI extraction, schema versioning, push digest
+  test_resources.py        # Paged/filtered resources endpoint + dashboard feed
   test_cache.py            # In-memory cache tests
   test_log_manager.py      # Log manager tests
   test_config.py           # YAML config loader tests
