@@ -161,6 +161,10 @@ docker compose up --build
 - Frontend: `http://localhost:3000` (override with `FRONTEND_PORT`)
 - Backend API: `http://localhost:8000` (override with `BACKEND_PORT`)
 
+Deployment-specific values go in a `.env` file next to `docker-compose.yml`
+(git-ignored, so `git pull` never conflicts). Copy `.env.example` and adjust:
+ports, `PATH_TO_APPDATA`, `APP_UID`/`APP_GID` and `DNS_PRIMARY`/`DNS_SECONDARY`.
+
 `${PATH_TO_APPDATA}/school-summary` is mounted as `app_data/` for persistent config and storage.
 
 ### Hardening

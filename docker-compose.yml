@@ -1,5 +1,10 @@
 x-hardening: &hardening
   restart: unless-stopped
+  # Upstream resolvers for external lookups (Bakalari, Gemini, Drive, Strava);
+  # service names like "backend" still resolve via Docker's embedded DNS.
+  dns:
+    - ${DNS_PRIMARY:-1.1.1.1}
+    - ${DNS_SECONDARY:-8.8.8.8}
   init: true
   read_only: true
   cap_drop: [ALL]
