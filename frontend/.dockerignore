@@ -1,0 +1,11 @@
+# Host node_modules are platform-specific; the image installs its own.
+node_modules/
+dist/
+dev-dist/
+coverage/
+*.tsbuildinfo
+.env
+.env.*
+npm-debug.log*
+Dockerfile
+.dockerignore

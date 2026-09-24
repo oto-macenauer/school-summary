@@ -15,7 +15,7 @@ School overview dashboard integrating multiple school systems — Bakalari, Stra
 ## Architecture
 
 ```
-backend/           FastAPI REST API (Python 3.12)
+backend/           FastAPI REST API (Python 3.14)
   app/
     core/          Auth, API client, Gemini, Google Drive
     modules/       Timetable, marks, komens, summary, prepare
@@ -41,8 +41,8 @@ Makefile           Common dev tasks (install, test, lint, build, docker)
 
 ## Prerequisites
 
-- Python 3.12+ and [uv](https://docs.astral.sh/uv/) (uv can install Python itself)
-- Node.js 18+
+- Python 3.14+ and [uv](https://docs.astral.sh/uv/) (uv can install Python itself)
+- Node.js 24 LTS+ (see `frontend/.nvmrc`)
 - (Optional) GNU make — the root `Makefile` wraps every common task; run `make help`
 - A Bakalari school account (for timetable, marks, messages)
 - (Optional) Gemini API key for AI features
@@ -158,16 +158,48 @@ The frontend runs at `http://localhost:5173` and proxies `/api` requests to the 
 docker compose up --build
 ```
 
-- Frontend: `http://localhost:3000`
-- Backend API: `http://localhost:8000`
+- Frontend: `http://localhost:3000` (override with `FRONTEND_PORT`)
+- Backend API: `http://localhost:8000` (override with `BACKEND_PORT`)
 
-The `app_data/` directory is mounted as a volume for persistent config and storage.
+`${PATH_TO_APPDATA}/school-summary` is mounted as `app_data/` for persistent config and storage.
+
+### Hardening
+
+Both containers run as non-root users on a read-only root filesystem, with
+all Linux capabilities dropped, `no-new-privileges`, an init process, and
+pid/memory limits. The frontend uses `nginx-unprivileged` (port 8080 inside
+the container) and sends a Content-Security-Policy and other security headers.
+
+The backend runs as uid:gid `10001:10001` by default, and **the mounted
+`app_data` directory must be writable by that user**. When upgrading an
+existing install whose data is owned by root, either:
+
+```bash
+sudo chown -R 10001:10001 "${PATH_TO_APPDATA}/school-summary"
+```
+
+or run as the directory's current owner, e.g. `APP_UID=99 APP_GID=100` on Unraid.
+
+### Health checks and monitoring
+
+| URL | Meaning | Use for |
+|-----|---------|---------|
+| `http://<host>:3000/healthz` | nginx is serving | Frontend container health, Uptime Kuma HTTP monitor |
+| `http://<host>:8000/api/health` | Backend process is up (never touches Bakalari) | Backend container health, Uptime Kuma HTTP monitor |
+| `http://<host>:8000/api/ready` | 200 only when every student is logged in to Bakalari; 503 otherwise (`starting`, `unconfigured`, `degraded`) | Uptime Kuma: alerts on bad credentials or a school server outage |
+
+The API endpoints are also reachable through the frontend (`:3000/api/...`).
+All three accept `GET` and `HEAD`. Uptime Kuma's **Docker Container** monitor
+also works, because both images define a `HEALTHCHECK` and the containers have
+fixed names (`school-summary-backend`, `school-summary-frontend`).
 
 ## API Endpoints
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/status` | Health check, auth status per student |
+| `GET /api/health` | Liveness probe |
+| `GET /api/ready` | Readiness probe (503 unless all students are authenticated) |
+| `GET /api/status` | Auth and last-update status per student |
 | `GET /api/students/{name}/dashboard` | All widget data in one call |
 | `GET /api/students/{name}/timetable` | Weekly timetable |
 | `GET /api/students/{name}/marks` | Grades with averages |

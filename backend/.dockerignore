@@ -1,0 +1,21 @@
+# Only pyproject.toml, uv.lock and app/ are needed. Keep runtime data
+# (credentials, service account keys) out of the build context entirely.
+app_data/
+**/app_data/
+.env
+.env.*
+*.pem
+*.key
+service_account*.json
+
+.venv/
+**/__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+tests/
+Dockerfile
+.dockerignore
