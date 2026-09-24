@@ -185,6 +185,7 @@ Every module and functionality must have unit test coverage. Tests are in `backe
 backend/tests/
   conftest.py              # Shared fixtures (mock responses, test credentials)
   test_auth.py             # Authentication tests
+  test_health.py           # /api/health + /api/ready probes
   test_timetable.py        # Timetable module tests
   test_marks.py            # Marks module tests
   test_komens.py           # Komens module tests
